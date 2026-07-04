@@ -9,7 +9,10 @@
     "lint": "next lint",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "pipeline": "tsx scripts/run-pipeline.ts",
+    "pipeline:live": "PIPELINE_DRY_RUN=false tsx scripts/run-pipeline.ts --live",
+    "pipeline:daily": "PIPELINE_DRY_RUN=false tsx scripts/run-pipeline.ts --live"
   },
   "dependencies": {
     "next": "14.2.5",

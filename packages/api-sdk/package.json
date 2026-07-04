@@ -1,0 +1,15 @@
+{
+  "name": "@evidencehub/api-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TypeScript SDK for EvidenceHub REST API consumers",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.5.3"
+  }
+}

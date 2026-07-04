@@ -1,0 +1,548 @@
+// EvidenceHub Sleep — Prisma Schema v2 (Production)
+// 15-table Knowledge Graph for PostgreSQL (Supabase)
+// Sprint 1: Database Schema — Architecture Freeze
+//
+// This schema is the foundation of the entire system.
+// All future Sprints (API, UI, AI Engine, Auto-update) depend on this data model.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum StudyType {
+  rct           // Randomized Controlled Trial
+  meta          // Meta-analysis
+  systematic    // Systematic Review
+  observational // Cohort / Case-control
+  animal        // Animal / Preclinical
+  trial         // Clinical Trial (non-randomized)
+}
+
+enum EvidenceStrength {
+  strong
+  moderate
+  weak
+}
+
+enum EffectDirection {
+  positive   // Supports the claim
+  negative   // Contradicts the claim
+  neutral    // Mixed / inconclusive
+}
+
+enum ConfidenceLevel {
+  high
+  moderate
+  low
+}
+
+enum PopulationFitLevel {
+  yes    // Suitable
+  check  // Use with caution
+  no     // Not recommended
+}
+
+enum ContentChannel {
+  web        // Next.js SSG page
+  faq        // JSON-LD FAQ
+  podcast    // TTS audio
+  video      // YouTube Shorts
+  twitter    // X / Twitter post
+  linkedin   // LinkedIn article
+  newsletter // Email digest
+}
+
+enum ContentStatus {
+  draft
+  published
+  archived
+}
+
+enum PipelineStatus {
+  running
+  success
+  failed
+  partial
+}
+
+enum ApiKeyStatus {
+  active
+  suspended
+  revoked
+}
+
+enum ApiTier {
+  free       // 100 req/day
+  pro        // 10,000 req/day
+  enterprise // Unlimited
+}
+
+// ============================================================
+// 1. TOPICS — Hierarchical topic tree
+// ============================================================
+
+model Topic {
+  id          String   @id @default(uuid()) @db.Uuid
+  slug        String   @unique
+  name        String
+  description String   @default("")
+  icon        String?
+  claimCount  Int      @default(0) @map("claim_count")
+  seoTitle    String?  @map("seo_title")
+  seoDesc     String?  @map("seo_desc")
+
+  // Hierarchy: Topic can have a parent topic (e.g., "Amino Acids" → "Glycine")
+  parentId    String?  @map("parent_id") @db.Uuid
+  parent      Topic?   @relation("TopicHierarchy", fields: [parentId], references: [id])
+  children    Topic[]  @relation("TopicHierarchy")
+
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  claims      Claim[]
+
+  @@index([parentId])
+  @@map("topics")
+}
+
+// ============================================================
+// 2. CLAIMS — Core entity (upgraded v2 structure)
+// ============================================================
+
+model Claim {
+  id              String           @id @default(uuid()) @db.Uuid
+  slug            String           @unique
+  text            String           // One-sentence claim statement
+  summary         String           @db.Text // 2-3 sentence summary with key numbers
+  category        String           @default("General")
+
+  // Topic relationship
+  topicId         String?          @map("topic_id") @db.Uuid
+  topic           Topic?           @relation(fields: [topicId], references: [id])
+
+  // Evidence scoring (denormalized for fast reads; details in EvidenceMetric)
+  evidenceScore   Int              @default(0) @map("evidence_score") // 0-100
+  confidence      ConfidenceLevel  @default(moderate)
+
+  // Study counts (denormalized)
+  rctCount        Int              @default(0) @map("rct_count")
+  metaCount       Int              @default(0) @map("meta_count")
+  studyCount      Int              @default(0) @map("study_count")
+
+  // v2 Upgraded fields
+  dose            String?          // Recommended dose string (e.g., "3g")
+  doseRange       String?          @map("dose_range") // e.g., "2-5g"
+  doseOptimal     String?          @map("dose_optimal") // e.g., "3g"
+  population      String[]         @default([]) // Array of population strings
+  limitations     String[]         @default([]) // Required: at least 2 items
+  mechanism       String[]         @default([]) // Ordered mechanism chain
+  keywords        String[]         @default([]) // SEO keywords
+  contradictions  String[]         @default([]) @map("contradictions") // v2: conflicting evidence
+  effectSize      Json?            @map("effect_size") // v2: { "sleep_latency_reduction": "10-20%" }
+  relatedSlugs    String[]         @default([]) @map("related_slugs")
+
+  // SEO
+  seoTitle        String?          @map("seo_title")
+  seoDesc         String?          @map("seo_desc")
+
+  // Timestamps
+  lastUpdated     DateTime         @default(now()) @map("last_updated")
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  // Relations
+  evidenceMetric  EvidenceMetric?
+  claimStudies    ClaimStudyMap[]
+  doseMappings    DoseMapping[]
+  populationFits  PopulationFit[]
+  faqs            FAQ[]
+  claimProducts   ClaimProduct[]
+  contentAssets   ContentAsset[]
+  references      Reference[]
+
+  @@index([topicId])
+  @@index([evidenceScore(sort: Desc)])
+  @@index([category])
+  @@map("claims")
+}
+
+// ============================================================
+// 3. STUDIES — Research papers (PubMed)
+// ============================================================
+
+model Study {
+  id            String     @id @default(uuid()) @db.Uuid
+  pmid          String?    @unique // PubMed ID
+  doi           String?    @unique // Digital Object Identifier
+  title         String
+  abstract      String?    @db.Text // Full abstract (for AI extraction)
+  journal       String     @default("")
+  authors       String     @default("")
+  year          Int?
+  sampleSize    Int        @default(0) @map("sample_size")
+  duration      String?    // e.g., "8 weeks"
+  intervention  String?    // e.g., "500mg glycine before bed"
+  outcome       String?    // e.g., "Sleep latency (PSQI)"
+  effectSize    String?    @map("effect_size") // e.g., "d=0.65"
+  result        String     @default("") @db.Text
+  studyType     StudyType  @default(rct) @map("study_type")
+  population    String?    // e.g., "Adults with insomnia"
+  url           String?    // PubMed URL
+  strength      Int        @default(3) // 1-5 quality rating
+
+  // Timestamps
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  // Relations
+  claimStudies  ClaimStudyMap[]
+
+  @@index([pmid])
+  @@index([doi])
+  @@index([studyType])
+  @@index([year(sort: Desc)])
+  @@map("studies")
+}
+
+// ============================================================
+// 4. CLAIM_STUDY_MAP — Relationship with strength + direction
+// ============================================================
+
+model ClaimStudyMap {
+  id              String           @id @default(uuid()) @db.Uuid
+  claimId         String           @map("claim_id") @db.Uuid
+  studyId         String           @map("study_id") @db.Uuid
+
+  // v2: Graded relationship
+  strength        EvidenceStrength @default(moderate)
+  effectDirection EffectDirection  @default(positive) @map("effect_direction")
+
+  // Metadata
+  note            String?
+
+  // Timestamps
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  // Relations
+  claim           Claim            @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  study           Study            @relation(fields: [studyId], references: [id], onDelete: Cascade)
+
+  @@unique([claimId, studyId])
+  @@index([claimId])
+  @@index([studyId])
+  @@index([effectDirection])
+  @@map("claim_study_map")
+}
+
+// ============================================================
+// 5. EVIDENCE_METRICS — 6-dimensional scoring (computed)
+// ============================================================
+
+model EvidenceMetric {
+  id                    String  @id @default(uuid()) @db.Uuid
+  claimId               String  @unique @map("claim_id") @db.Uuid
+
+  // Study counts by type
+  rctCount              Int     @default(0) @map("rct_count")
+  metaCount             Int     @default(0) @map("meta_count")
+  cohortCount           Int     @default(0) @map("cohort_count")
+  animalCount           Int     @default(0) @map("animal_count")
+
+  // Scoring dimensions (0-100 each)
+  humanEvidenceScore    Int     @default(0) @map("human_evidence_score") // RCT + Meta weighted
+  consistencyScore      Int     @default(0) @map("consistency_score") // Direction agreement
+  effectSizeScore       Int     @default(0) @map("effect_size_score") // Magnitude of effect
+  mechanismScore        Int     @default(0) @map("mechanism_score") // Mechanism clarity
+  safetyScore           Int     @default(0) @map("safety_score") // Safety profile
+
+  // Final computed score
+  finalScore            Int     @default(0) @map("final_score") // 0-100, clamped
+  contradictionPenalty  Int     @default(0) @map("contradiction_penalty") // -15 per contradiction
+
+  // Timestamps
+  computedAt            DateTime @default(now()) @map("computed_at")
+
+  // Relations
+  claim                 Claim   @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@map("evidence_metrics")
+}
+
+// ============================================================
+// 6. DOSE_MAPPINGS — Dose-response data
+// ============================================================
+
+model DoseMapping {
+  id        String   @id @default(uuid()) @db.Uuid
+  claimId   String   @map("claim_id") @db.Uuid
+  compound  String   // e.g., "Glycine"
+  doseRange String   @map("dose_range") // e.g., "1g"
+  effect    String   @db.Text // e.g., "Mild improvement"
+  optimal   Boolean  @default(false) // Is this the optimal dose?
+
+  // Relations
+  claim     Claim    @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@index([claimId])
+  @@map("dose_mappings")
+}
+
+// ============================================================
+// 7. POPULATION_FITS — Population suitability
+// ============================================================
+
+model PopulationFit {
+  id        String              @id @default(uuid()) @db.Uuid
+  claimId   String              @map("claim_id") @db.Uuid
+  group     String              // e.g., "Healthy adults", "Pregnant women"
+  fit       PopulationFitLevel  @default(check)
+  note      String?             @db.Text
+
+  // Relations
+  claim     Claim               @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@index([claimId])
+  @@index([fit])
+  @@map("population_fits")
+}
+
+// ============================================================
+// 8. FAQS — Normalized FAQ items (one per row, not JSON)
+// ============================================================
+
+model FAQ {
+  id        String   @id @default(uuid()) @db.Uuid
+  claimId   String   @map("claim_id") @db.Uuid
+  question  String   @db.Text
+  answer    String   @db.Text
+  sortOrder Int      @default(0) @map("sort_order")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  claim     Claim    @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@index([claimId])
+  @@map("faqs")
+}
+
+// ============================================================
+// 9. PRODUCTS — Affiliate products
+// ============================================================
+
+model Product {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  brand       String   @default("")
+  asin        String?  @unique // Amazon ASIN
+  iherbId     String?  @map("iherb_id")
+  url         String?  // Affiliate URL
+  imageUrl    String?  @map("image_url")
+  price       Float?
+  currency    String   @default("USD")
+  form        String?  // e.g., "capsule", "powder", "liquid"
+  dosePerServing String? @map("dose_per_serving") // e.g., "500mg"
+  description String?  @db.Text
+
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  claimProducts ClaimProduct[]
+
+  @@index([asin])
+  @@index([brand])
+  @@map("products")
+}
+
+// ============================================================
+// 10. CLAIM_PRODUCTS — Claim-Product mapping
+// ============================================================
+
+model ClaimProduct {
+  id          String   @id @default(uuid()) @db.Uuid
+  claimId     String   @map("claim_id") @db.Uuid
+  productId   String   @map("product_id") @db.Uuid
+
+  // Why this product is recommended for this claim
+  reason      String?  @db.Text
+  matchScore  Int      @default(0) @map("match_score") // 0-100, how well product matches research dose
+
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  claim       Claim    @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([claimId, productId])
+  @@index([claimId])
+  @@index([productId])
+  @@map("claim_products")
+}
+
+// ============================================================
+// 11. CONTENT_ASSETS — Multi-channel content ecosystem
+// ============================================================
+
+model ContentAsset {
+  id          String         @id @default(uuid()) @db.Uuid
+  claimId     String?        @map("claim_id") @db.Uuid // Nullable: some content is topic-level
+
+  channel     ContentChannel
+  title       String
+  body        String         @db.Text
+  url         String?        // Published URL (if applicable)
+  status      ContentStatus  @default(draft)
+
+  // Metadata (channel-specific)
+  metadata    Json?          // e.g., { "duration": "2:30", "platform": "youtube" }
+
+  // Timestamps
+  createdAt   DateTime       @default(now()) @map("created_at")
+  publishedAt DateTime?      @map("published_at")
+
+  // Relations
+  claim       Claim?         @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@index([claimId])
+  @@index([channel])
+  @@index([status])
+  @@index([publishedAt(sort: Desc)])
+  @@map("content_assets")
+}
+
+// ============================================================
+// 12. REFERENCES — External citations
+// ============================================================
+
+model Reference {
+  id        String   @id @default(uuid()) @db.Uuid
+  claimId   String   @map("claim_id") @db.Uuid
+  studyId   String?  @map("study_id") @db.Uuid // Optional: link to internal Study
+
+  // Citation data
+  type      String   @default("pubmed") // pubmed | doi | url | book
+  title     String
+  url       String
+  citation  String?  @db.Text // Formatted citation string
+  pmid      String?
+  doi       String?
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  claim     Claim    @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@index([claimId])
+  @@index([pmid])
+  @@map("references")
+}
+
+// ============================================================
+// 13. PIPELINE_RUNS — Execution logs for auto-update system
+// ============================================================
+
+model PipelineRun {
+  id           String         @id @default(uuid()) @db.Uuid
+  status       PipelineStatus @default(running)
+
+  // Execution details
+  papersFetched  Int          @default(0) @map("papers_fetched")
+  claimsExtracted Int         @default(0) @map("claims_extracted")
+  claimsNew      Int          @default(0) @map("claims_new")
+  claimsUpdated  Int          @default(0) @map("claims_updated")
+  claimsSkipped  Int          @default(0) @map("claims_skipped")
+  errorsCount    Int          @default(0) @map("errors_count")
+
+  // Logs
+  log          String?        @db.Text // Full execution log
+  errorMessage String?        @map("error_message") @db.Text
+
+  // Mode
+  dryRun       Boolean        @default(true) @map("dry_run")
+  aiProvider   String?        @map("ai_provider")
+
+  // Timestamps
+  startedAt   DateTime       @default(now()) @map("started_at")
+  finishedAt  DateTime?      @map("finished_at")
+
+  @@index([status])
+  @@index([startedAt(sort: Desc)])
+  @@map("pipeline_runs")
+}
+
+// ============================================================
+// 14. API_KEYS — API key management for monetization
+// ============================================================
+
+model ApiKey {
+  id          String      @id @default(uuid()) @db.Uuid
+  keyHash     String      @unique @map("key_hash") // Hashed API key (never store plaintext)
+  keyPrefix   String      @map("key_prefix") // First 8 chars for identification (e.g., "eh_live_")
+  name        String      // User-defined name
+  email       String?     // Owner email
+  tier        ApiTier     @default(free)
+  status      ApiKeyStatus @default(active)
+
+  // Rate limiting
+  dailyLimit  Int         @default(100) @map("daily_limit")
+  requestsToday Int       @default(0) @map("requests_today")
+  resetAt     DateTime?   @map("reset_at") // When daily counter resets
+
+  // Timestamps
+  createdAt   DateTime    @default(now()) @map("created_at")
+  lastUsedAt  DateTime?   @map("last_used_at")
+  revokedAt   DateTime?   @map("revoked_at")
+
+  // Relations
+  usageLogs   ApiUsageLog[]
+
+  @@index([keyHash])
+  @@index([status])
+  @@index([tier])
+  @@map("api_keys")
+}
+
+// ============================================================
+// 15. API_USAGE_LOGS — API usage tracking
+// ============================================================
+
+model ApiUsageLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  apiKeyId    String   @map("api_key_id") @db.Uuid
+
+  // Request details
+  endpoint    String   // e.g., "/api/claim/glycine-sleep-latency"
+  method      String   @default("GET")
+  statusCode  Int      @map("status_code") // HTTP status code
+  responseTime Int     @map("response_time") // ms
+
+  // Client info
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  apiKey      ApiKey   @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  @@index([apiKeyId])
+  @@index([createdAt(sort: Desc)])
+  @@index([endpoint])
+  @@map("api_usage_logs")
+}

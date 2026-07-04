@@ -1,5 +1,6 @@
-// EvidenceHub Sleep — Prisma Schema
-// Claim Graph data model
+// EvidenceHub Sleep — Prisma Schema (SQLite, local dev)
+// Production PostgreSQL schema: packages/database/schema.prisma
+// This SQLite schema is compatible with the current seed script.
 
 generator client {
   provider = "prisma-client-js"
@@ -11,7 +12,8 @@ datasource db {
 }
 
 // ============================================================
-// Core: Claim Graph
+// Core: Claim Graph (6 tables — MVP)
+// Production schema has 15 tables, see packages/database/schema.prisma
 // ============================================================
 
 model Claim {
@@ -23,35 +25,28 @@ model Claim {
   topicId     String?
   topic       Topic?   @relation(fields: [topicId], references: [id])
 
-  // Evidence scoring
-  evidenceScore    Int      @default(0) // 0-100
-  humanRctScore    Int      @default(0) // 0-5
-  metaScore        Int      @default(0) // 0-5
-  mechanismScore   Int      @default(0) // 0-5
-  safetyScore      Int      @default(0) // 0-5
-  confidence       String   @default("medium") // high | moderate | low
+  evidenceScore    Int      @default(0)
+  humanRctScore    Int      @default(0)
+  metaScore        Int      @default(0)
+  mechanismScore   Int      @default(0)
+  safetyScore      Int      @default(0)
+  confidence       String   @default("medium")
 
-  // Counts
   rctCount     Int      @default(0)
   metaCount    Int      @default(0)
   studyCount   Int      @default(0)
 
-  // Metadata
   dose         String?
-  population   String   @default("[]") // JSON array as string (SQLite)
-  limitations  String   @default("[]") // JSON array
-  mechanism    String   @default("[]") // JSON array of mechanism steps
-  faq          String   @default("[]") // JSON array of {q, a}
-  relatedSlugs String   @default("[]") // JSON array of slugs
+  population   String   @default("[]")
+  limitations  String   @default("[]")
+  mechanism    String   @default("[]")
+  faq          String   @default("[]")
+  relatedSlugs String   @default("[]")
+  keywords     String   @default("[]")
 
-  // SEO
-  keywords     String   @default("[]") // JSON array
-
-  // Timestamps
   lastUpdated  DateTime @default(now())
   createdAt    DateTime @default(now())
 
-  // Relations
   evidenceLinks EvidenceLink[]
   doseMappings  DoseMapping[]
 
@@ -72,13 +67,12 @@ model Study {
   outcome       String?
   effectSize    String?
   result        String   @default("")
-  studyType     String   @default("rct") // rct | meta | observational | animal
+  studyType     String   @default("rct")
   population    String?
   url           String?
 
   createdAt     DateTime @default(now())
 
-  // Relations
   evidenceLinks EvidenceLink[]
 
   @@map("studies")
@@ -88,7 +82,7 @@ model EvidenceLink {
   id        String   @id @default(cuid())
   claimId   String
   studyId   String
-  strength  Int      @default(3) // 1-5
+  strength  Int      @default(3)
 
   claim     Claim   @relation(fields: [claimId], references: [id], onDelete: Cascade)
   study     Study   @relation(fields: [studyId], references: [id], onDelete: Cascade)
@@ -97,10 +91,6 @@ model EvidenceLink {
 
   @@map("evidence_links")
 }
-
-// ============================================================
-// Supporting tables
-// ============================================================
 
 model Topic {
   id          String   @id @default(cuid())
@@ -133,7 +123,7 @@ model PopulationFit {
   id        String   @id @default(cuid())
   claimId   String
   group     String
-  fit       String   @default("check") // yes | check | no
+  fit       String   @default("check")
   note      String?
 
   claim     Claim   @relation(fields: [claimId], references: [id], onDelete: Cascade)

@@ -1,0 +1,142 @@
+// EvidenceHub Sleep — Prisma Schema
+// Claim Graph data model
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// ============================================================
+// Core: Claim Graph
+// ============================================================
+
+model Claim {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  text        String
+  summary     String
+  category    String
+  topicId     String?
+  topic       Topic?   @relation(fields: [topicId], references: [id])
+
+  // Evidence scoring
+  evidenceScore    Int      @default(0) // 0-100
+  humanRctScore    Int      @default(0) // 0-5
+  metaScore        Int      @default(0) // 0-5
+  mechanismScore   Int      @default(0) // 0-5
+  safetyScore      Int      @default(0) // 0-5
+  confidence       String   @default("medium") // high | moderate | low
+
+  // Counts
+  rctCount     Int      @default(0)
+  metaCount    Int      @default(0)
+  studyCount   Int      @default(0)
+
+  // Metadata
+  dose         String?
+  population   String   @default("[]") // JSON array as string (SQLite)
+  limitations  String   @default("[]") // JSON array
+  mechanism    String   @default("[]") // JSON array of mechanism steps
+  faq          String   @default("[]") // JSON array of {q, a}
+  relatedSlugs String   @default("[]") // JSON array of slugs
+
+  // SEO
+  keywords     String   @default("[]") // JSON array
+
+  // Timestamps
+  lastUpdated  DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  // Relations
+  evidenceLinks EvidenceLink[]
+  doseMappings  DoseMapping[]
+
+  @@map("claims")
+}
+
+model Study {
+  id            String   @id @default(cuid())
+  pmid          String?
+  doi           String?
+  title         String
+  journal       String
+  authors       String   @default("")
+  year          Int?
+  sampleSize    Int      @default(0)
+  duration      String?
+  intervention  String?
+  outcome       String?
+  effectSize    String?
+  result        String   @default("")
+  studyType     String   @default("rct") // rct | meta | observational | animal
+  population    String?
+  url           String?
+
+  createdAt     DateTime @default(now())
+
+  // Relations
+  evidenceLinks EvidenceLink[]
+
+  @@map("studies")
+}
+
+model EvidenceLink {
+  id        String   @id @default(cuid())
+  claimId   String
+  studyId   String
+  strength  Int      @default(3) // 1-5
+
+  claim     Claim   @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  study     Study   @relation(fields: [studyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@map("evidence_links")
+}
+
+// ============================================================
+// Supporting tables
+// ============================================================
+
+model Topic {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String   @default("")
+  icon        String?
+  claimCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  claims      Claim[]
+
+  @@map("topics")
+}
+
+model DoseMapping {
+  id        String   @id @default(cuid())
+  claimId   String
+  compound  String
+  doseRange String
+  effect    String
+  optimal   Boolean  @default(false)
+
+  claim     Claim   @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@map("dose_mappings")
+}
+
+model PopulationFit {
+  id        String   @id @default(cuid())
+  claimId   String
+  group     String
+  fit       String   @default("check") // yes | check | no
+  note      String?
+
+  claim     Claim   @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@map("population_fits")
+}

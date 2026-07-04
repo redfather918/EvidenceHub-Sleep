@@ -4,10 +4,6 @@
 import { NextResponse } from "next/server";
 import { buildClaimApiResponse } from "@/lib/data";
 
-export function generateStaticParams() {
-  return [];
-}
-
 export async function GET(
   request: Request,
   { params }: { params: { slug: string } }

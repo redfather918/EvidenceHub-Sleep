@@ -30,7 +30,7 @@ model Claim {
   metaScore        Int      @default(0)
   mechanismScore   Int      @default(0)
   safetyScore      Int      @default(0)
-  confidence       String   @default("medium")
+  confidence       String   @default("moderate") // high | moderate | low
 
   rctCount     Int      @default(0)
   metaCount    Int      @default(0)
@@ -47,9 +47,11 @@ model Claim {
   lastUpdated  DateTime @default(now())
   createdAt    DateTime @default(now())
 
-  evidenceLinks EvidenceLink[]
-  doseMappings  DoseMapping[]
+  evidenceLinks  EvidenceLink[]
+  doseMappings   DoseMapping[]
+  populationFits PopulationFit[]
 
+  @@index([topicId])
   @@map("claims")
 }
 
@@ -67,14 +69,17 @@ model Study {
   outcome       String?
   effectSize    String?
   result        String   @default("")
-  studyType     String   @default("rct")
-  population    String?
-  url           String?
+  studyType    String   @default("rct")
+  population   String?
+  url          String?
+  strength     Int      @default(3) // 1-5 quality rating
 
   createdAt     DateTime @default(now())
 
   evidenceLinks EvidenceLink[]
 
+  @@index([pmid])
+  @@index([studyType])
   @@map("studies")
 }
 
@@ -89,6 +94,9 @@ model EvidenceLink {
 
   createdAt DateTime @default(now())
 
+  @@unique([claimId, studyId])
+  @@index([claimId])
+  @@index([studyId])
   @@map("evidence_links")
 }
 
@@ -116,6 +124,7 @@ model DoseMapping {
 
   claim     Claim   @relation(fields: [claimId], references: [id], onDelete: Cascade)
 
+  @@index([claimId])
   @@map("dose_mappings")
 }
 
@@ -128,5 +137,7 @@ model PopulationFit {
 
   claim     Claim   @relation(fields: [claimId], references: [id], onDelete: Cascade)
 
+  @@index([claimId])
+  @@index([fit])
   @@map("population_fits")
 }

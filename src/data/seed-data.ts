@@ -222,11 +222,11 @@ export const studies: Record<string, Study> = {
   // --- Tart Cherry ---
   "s-tc-1": {
     id: "s-tc-1",
-    pmid: "25734568",
-    doi: "10.1016/j.ejcn.2012.04.002",
-    title: "Effect of tart cherry juice on sleep in older adults with insomnia",
+    pmid: "22038497",
+    doi: "10.1007/s00394-011-0263-7",
+    title: "Effect of tart cherry juice (Prunus cerasus) on melatonin levels and enhanced sleep quality",
     journal: "European Journal of Nutrition",
-    authors: "Howatson G, et al.",
+    authors: "Howatson G, Bell PG, Tallent J, et al.",
     year: 2012,
     sampleSize: 20,
     duration: "7 days",
@@ -285,12 +285,12 @@ export const studies: Record<string, Study> = {
   // --- Apigenin ---
   "s-api-1": {
     id: "s-api-1",
-    pmid: "23904314",
-    doi: "10.1016/j.phrs.2009.03.003",
-    title: "Apigenin and sleep: a review of flavonoid effects on GABAergic transmission",
-    journal: "Pharmacological Research",
-    authors: "Salucci S, et al.",
-    year: 2009,
+    pmid: "22370792",
+    doi: undefined,
+    title: "Enhancement of pentobarbital-induced sleep by apigenin through chloride ion channel activation",
+    journal: "Archives of Pharmacal Research",
+    authors: "Kim JW, Kim CS, Hu Z, et al.",
+    year: 2012,
     sampleSize: 0,
     duration: "Review",
     intervention: "Various apigenin sources",
@@ -327,7 +327,7 @@ export const studies: Record<string, Study> = {
   // --- Magnesium — deep sleep / sleep architecture ---
   "s-mg-3": {
     id: "s-mg-3",
-    pmid: "23853648",
+    pmid: undefined,
     doi: "10.1159/000354817",
     title: "Magnesium supplementation increases slow-wave sleep and improves sleep architecture",
     journal: "Journal of Research in Medical Sciences",

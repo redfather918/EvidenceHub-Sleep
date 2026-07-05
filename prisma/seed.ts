@@ -61,6 +61,7 @@ async function main() {
         studyType: study.studyType,
         population: study.population,
         url: study.url,
+        strength: study.strength ?? 3,
       },
       create: {
         id: study.id,
@@ -79,6 +80,7 @@ async function main() {
         studyType: study.studyType,
         population: study.population,
         url: study.url,
+        strength: study.strength ?? 3,
       },
     });
   }

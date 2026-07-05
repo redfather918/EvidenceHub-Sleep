@@ -1,4 +1,4 @@
-# EvidenceHub Sleep — PRD v3.1
+# EvidenceHub Sleep — PRD v3.0
 
 > **A Self-Updating, AI-Native Scientific Evidence Graph for Sleep & Health**
 
@@ -605,216 +605,30 @@ ChatGPT, Claude, Gemini, Perplexity, AI Agents
 
 ---
 
-## 十五、开发路线图（10 Sprint 商业级）
+## 十五、技术栈
 
-> **架构冻结优先**：数据库设计决定了项目 80% 的可扩展性。先冻结 Schema，再写代码。
-
-### Monorepo 目录结构
-
-```
-evidencehub-sleep/
-├── apps/
-│    └── web/                      # Next.js 15 (App Router)
-│
-├── packages/
-│    ├── database/                 # Prisma Schema + Client + Migrations
-│    ├── ui/                       # Shared UI Components (shadcn/ui)
-│    ├── ai/                       # AI Claim Extraction (OpenAI/DeepSeek/Gemini)
-│    ├── crawler/                  # PubMed / RSS / Data Source Fetchers
-│    ├── evidence-engine/          # Scoring + Dedup + Graph Merge
-│    └── api-sdk/                  # TypeScript SDK for API consumers
-│
-├── supabase/                      # Supabase config + SQL migrations
-│
-├── scripts/                       # Pipeline CLI + Cron scripts
-│
-└── docs/                          # PRD + TRD + Operation Manual
-```
-
-> 未来扩展到 Nutrition / Heart / Longevity 时，只需增加 Topic 和数据，不用重构系统。
-
-### Sprint 1：数据库 Schema（Prisma）— **当前**
-
-- 设计 15 张核心表的 Prisma Schema（PostgreSQL）
-- 数据模型：Topic → Claim → Evidence → Study → Product → FAQ → ContentAsset
-- 创建 Supabase SQL 迁移文件
-- 冻结数据契约，后续 Sprint 全部基于此 Schema 开发
-
-### Sprint 2：API 设计（REST + TypeScript 类型）
-
-- 定义所有 REST 端点的请求/响应类型
-- 前后端契约确定
-- API SDK 包（packages/api-sdk/）
-
-### Sprint 3：网站 UI
-
-- 首页 / Claim 页面 / Topic 页面 / Search / Evidence Score / Affiliate 模块 / API Docs
-- 基于 shadcn/ui 组件库
-- 这一阶段网站可以上线
-
-### Sprint 4：Search Engine
-
-- 不是普通搜索，而是：关键词 → 找到 Topic → 找到所有 Claim → Evidence 排序
-- Phase 1: PostgreSQL Full Text Search
-- Phase 2: Meilisearch（后期）
-
-### Sprint 5：AI Engine
-
-- 输入：PubMed Paper
-- 输出：Claim + Evidence + Dose + Population + Limitations + FAQ
-- 这是整个项目最值钱的部分
-
-### Sprint 6：自动更新系统
-
-- 数据库已稳定、页面已稳定、API 已稳定 → 现在才接入自动更新
-- 流程：凌晨 2 点 → PubMed → 抓新论文 → AI 解析 → 更新数据库 → 重新生成页面 → Google Index
-
-### Sprint 7：Affiliate 系统
-
-- Claim → Recommended Form → Research Dose → Amazon → iHerb
-- 自动嵌入，仅展示研究上下文中使用过的产品
-
-### Sprint 8：API 商业化
-
-- API Key 管理 + 速率限制 + 使用量追踪
-- 分层定价（Free / Pro / Enterprise）
-
-### Sprint 9：Admin 后台
-
-- 新增论文 / 修改 Claim / 人工审核 / 更新 Evidence
-
-### Sprint 10：AI Agent + MCP
-
-- ChatGPT / Claude / Gemini 直接调用
-- MCP Server 实现
-
----
-
-## 十六、内容生态（一条 Claim → 全渠道内容）
-
-> 一篇研究衍生出多个渠道的内容，而不是只生成一篇网页。
-
-```
-Claim
-  │
-  ├── Web Page (Next.js SSG)
-  │
-  ├── FAQ (JSON-LD, AI 引用)
-  │
-  ├── Podcast (TTS 生成)
-  │
-  ├── YouTube Shorts (视频自动生成)
-  │
-  ├── X / Twitter (自动发帖)
-  │
-  ├── LinkedIn (专业内容)
-  │
-  └── Newsletter (Weekly Evidence Digest)
-```
-
-### 数据模型支持
-
-```sql
--- ContentAsset 表：一条 Claim 可以有多个渠道的内容
-CREATE TABLE content_assets (
-  id UUID PRIMARY KEY,
-  claim_id UUID REFERENCES claims(id),
-  channel TEXT,        -- 'web' | 'faq' | 'podcast' | 'video' | 'twitter' | 'linkedin' | 'newsletter'
-  title TEXT,
-  body TEXT,
-  url TEXT,
-  status TEXT DEFAULT 'draft',  -- 'draft' | 'published' | 'archived'
-  metadata JSONB,
-  created_at TIMESTAMPTZ,
-  published_at TIMESTAMPTZ
-);
-```
-
----
-
-## 十七、最终冻结技术栈（2026 最佳实践）
-
-| 模块 | 技术选型 | 状态 |
+| 层 | 技术选型 | 状态 |
 |---|---|---|
-| Frontend | Next.js 15 + React + TypeScript | ✅ v14 已用，v15 升级路线 |
-| UI | Tailwind CSS + shadcn/ui | 🔲 Sprint 3 |
-| Database | PostgreSQL（Supabase） | ✅ Schema 设计中 |
-| ORM | Prisma | ✅ |
-| Auth | Supabase Auth | 🔲 Sprint 8 |
-| Storage | Supabase Storage | 🔲 |
-| Search | PostgreSQL Full Text → Meilisearch（后期） | 🔲 Sprint 4 |
-| AI | OpenAI + Gemini（可切换） | ✅ v1 框架 |
+| Frontend | Next.js 14 (App Router) + TypeScript + Tailwind CSS | ✅ |
+| Database | Prisma ORM + SQLite (MVP) → PostgreSQL (Production) | ✅ MVP |
+| API | Next.js Route Handlers (REST) | ✅ |
+| SEO | JSON-LD Schema + Sitemap + Robots.txt | ✅ |
+| Ingestion | PubMed E-utilities API | ✅ v1 |
+| AI Pipeline | DeepSeek API / OpenAI (Claim extraction, scoring) | ✅ v1 框架 |
+| Scoring | v2 Evidence Score 公式 | ✅ v1 |
 | Deployment | Vercel | 🔲 待部署 |
-| Cron | GitHub Actions + Vercel Cron | ✅ v1 就绪 |
-| Analytics | Google Analytics + Search Console + Plausible | 🔲 |
-| Monorepo | pnpm workspaces | 🔲 Sprint 1 |
+| Cron | `npm run pipeline:daily` | ✅ v1 就绪 |
 
 ---
 
-## 十八、Sprint 1 数据库设计（15 张核心表）
-
-### 数据模型全景
-
-```
-Topic (层级)
-  │
-  ▼
-Claim (核心)
-  ├── EvidenceMetric (评分)
-  ├── ClaimStudyMap ──→ Study (论文)
-  ├── DoseMapping (剂量)
-  ├── PopulationFit (人群)
-  ├── FAQ (问答)
-  ├── ClaimProduct ──→ Product (Affiliate)
-  ├── ContentAsset (多渠道内容)
-  ├── Reference (引用)
-  └── PipelineRun (更新日志)
-  
-ApiKey (API 商业化)
-ApiUsageLog (用量追踪)
-```
-
-### 15 张表清单
-
-| # | 表名 | 用途 | Sprint |
-|---|---|---|---|
-| 1 | topics | 主题（含层级） | 1 ✅ |
-| 2 | claims | 核心结论 | 1 ✅ |
-| 3 | studies | 研究论文 | 1 ✅ |
-| 4 | claim_study_map | Claim-Study 关系（含 strength + direction） | 1 ✅ |
-| 5 | evidence_metrics | 证据评分（6 维度） | 1 ✅ |
-| 6 | dose_mappings | 剂量-效应 | 1 ✅ |
-| 7 | population_fits | 人群适配 | 1 ✅ |
-| 8 | faqs | 常见问题（规范化） | 1 ✅ |
-| 9 | products | Affiliate 产品 | 1 ✅ |
-| 10 | claim_products | Claim-Product 关系 | 1 ✅ |
-| 11 | content_assets | 多渠道内容（Web/Podcast/Video/Social/Newsletter） | 1 ✅ |
-| 12 | references | 外部引用 | 1 ✅ |
-| 13 | pipeline_runs | Pipeline 执行日志 | 1 ✅ |
-| 14 | api_keys | API 密钥管理 | 1 ✅ |
-| 15 | api_usage_logs | API 用量追踪 | 1 ✅ |
-
----
-
-## 十九、最终定义
+## 十六、最终定义
 
 > **EvidenceHub Sleep is not a content website.**
 > **It is a self-updating scientific knowledge graph for sleep science.**
 
-### 护城河
-
-不是文章数量、SEO、域名，而是：
-
-- ✔ Claim Graph（结构化知识系统）
-- ✔ 自动更新机制
-- ✔ Evidence Score 系统
-- ✔ AI 可调用结构化数据
-- ✔ 15 张表的生产级数据模型
-
 ---
 
-*PRD v3.1 — Updated: 2026-07-04*
+*PRD v3.0 — Updated: 2026-07-04*
 *Build: 11 claims, 15 studies, 8 topics, 30 pages*
 *Pipeline: PubMed fetcher + AI extractor + Evidence scorer + CLI runner (v1)*
-*Sprint 1: 15-table PostgreSQL Prisma Schema + Supabase migration + Monorepo structure*
 *Test: All pages 200, 3 APIs verified, 11 modules confirmed, SEO validated*

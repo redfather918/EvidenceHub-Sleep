@@ -1,0 +1,32 @@
+# Job 7: Newsletter 发送 — 每周五 9:00 AM 北京时间 / UTC 周五 1:00
+# 生成本周新增 Claims 周报 → 通过 Resend API 邮件推送（需 RESEND_API_KEY）
+
+name: "[Job 7] Newsletter Send"
+
+on:
+  schedule:
+    - cron: "0 1 * * 5"
+  workflow_dispatch:
+
+env:
+  BASE_URL: ${{ secrets.EVIDENCEHUB_BASE_URL || 'https://evidencehubsleep.com' }}
+
+jobs:
+  newsletter-send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Call newsletter-send API
+        run: |
+          echo "→ [Job 7] Sending weekly newsletter..."
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            -X GET "${BASE_URL}/api/cron/newsletter-send" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --max-time 300)
+          echo "HTTP Status: ${HTTP_CODE}"
+          cat /tmp/response.json
+          if [ "${HTTP_CODE}" != "200" ]; then
+            echo "::warning::Job 7 returned HTTP ${HTTP_CODE}"
+            exit 1
+          fi

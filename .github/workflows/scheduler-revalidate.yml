@@ -1,0 +1,32 @@
+# Job 4: ISR 页面重新验证 — 每小时 :30
+# 触发所有静态页面和动态路由的 ISR 重新生成
+
+name: "[Job 4] Revalidate Pages"
+
+on:
+  schedule:
+    - cron: "30 * * * *"
+  workflow_dispatch:
+
+env:
+  BASE_URL: ${{ secrets.EVIDENCEHUB_BASE_URL || 'https://evidencehubsleep.com' }}
+
+jobs:
+  revalidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call revalidate API
+        run: |
+          echo "→ [Job 4] Revalidating ISR pages..."
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            -X GET "${BASE_URL}/api/cron/revalidate" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --max-time 60)
+          echo "HTTP Status: ${HTTP_CODE}"
+          cat /tmp/response.json
+          if [ "${HTTP_CODE}" != "200" ]; then
+            echo "::warning::Job 4 returned HTTP ${HTTP_CODE}"
+            exit 1
+          fi

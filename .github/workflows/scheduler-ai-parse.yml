@@ -1,0 +1,32 @@
+# Job 2: AI 解析 — 每小时 :00
+# 检查未处理论文 → AI 提取结构化 Claims → 数据库写入
+
+name: "[Job 2] AI Parse"
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+env:
+  BASE_URL: ${{ secrets.EVIDENCEHUB_BASE_URL || 'https://evidencehubsleep.com' }}
+
+jobs:
+  ai-parse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Call ai-parse API
+        run: |
+          echo "→ [Job 2] Running AI claim extraction..."
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            -X GET "${BASE_URL}/api/cron/ai-parse" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --max-time 300)
+          echo "HTTP Status: ${HTTP_CODE}"
+          cat /tmp/response.json
+          if [ "${HTTP_CODE}" != "200" ]; then
+            echo "::warning::Job 2 returned HTTP ${HTTP_CODE}"
+            exit 1
+          fi

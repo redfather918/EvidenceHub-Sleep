@@ -1,0 +1,32 @@
+# Job 3: 更新 Claim — 每小时 :15
+# 去重匹配 + 合并到已有 Claim + 重算 Evidence Score
+
+name: "[Job 3] Update Claims"
+
+on:
+  schedule:
+    - cron: "15 * * * *"
+  workflow_dispatch:
+
+env:
+  BASE_URL: ${{ secrets.EVIDENCEHUB_BASE_URL || 'https://evidencehubsleep.com' }}
+
+jobs:
+  update-claims:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Call update-claims API
+        run: |
+          echo "→ [Job 3] Updating claims and evidence scores..."
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            -X GET "${BASE_URL}/api/cron/update-claims" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --max-time 300)
+          echo "HTTP Status: ${HTTP_CODE}"
+          cat /tmp/response.json
+          if [ "${HTTP_CODE}" != "200" ]; then
+            echo "::warning::Job 3 returned HTTP ${HTTP_CODE}"
+            exit 1
+          fi

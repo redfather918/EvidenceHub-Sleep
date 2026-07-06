@@ -1,0 +1,32 @@
+# Job 1: 抓取论文 — 每天 2:00 AM 北京时间 / UTC 18:00
+# 从 PubMed API 采集最新睡眠研究论文，存入 Supabase
+
+name: "[Job 1] Fetch Papers"
+
+on:
+  schedule:
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+
+env:
+  BASE_URL: ${{ secrets.EVIDENCEHUB_BASE_URL || 'https://evidencehubsleep.com' }}
+
+jobs:
+  fetch-papers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Call fetch-papers API
+        run: |
+          echo "→ [Job 1] Fetching papers from PubMed..."
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            -X GET "${BASE_URL}/api/cron/fetch-papers" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --max-time 300)
+          echo "HTTP Status: ${HTTP_CODE}"
+          cat /tmp/response.json
+          if [ "${HTTP_CODE}" != "200" ]; then
+            echo "::warning::Job 1 returned HTTP ${HTTP_CODE}"
+            exit 1
+          fi

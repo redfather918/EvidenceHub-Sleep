@@ -1,0 +1,32 @@
+# Job 5: SEO 更新 — 每天 4:00 AM 北京时间 / UTC 20:00
+# 重新验证 sitemap/robots/RSS + Ping Google + IndexNow 提交
+
+name: "[Job 5] SEO Update"
+
+on:
+  schedule:
+    - cron: "0 20 * * *"
+  workflow_dispatch:
+
+env:
+  BASE_URL: ${{ secrets.EVIDENCEHUB_BASE_URL || 'https://evidencehubsleep.com' }}
+
+jobs:
+  seo-update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call seo-update API
+        run: |
+          echo "→ [Job 5] Updating sitemap, RSS, and pinging search engines..."
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            -X GET "${BASE_URL}/api/cron/seo-update" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --max-time 60)
+          echo "HTTP Status: ${HTTP_CODE}"
+          cat /tmp/response.json
+          if [ "${HTTP_CODE}" != "200" ]; then
+            echo "::warning::Job 5 returned HTTP ${HTTP_CODE}"
+            exit 1
+          fi

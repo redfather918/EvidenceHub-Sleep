@@ -1,4 +1,4 @@
-# EvidenceHub Sleep — PRD v3.0
+# EvidenceHub Sleep — PRD v4.0
 
 > **A Self-Updating, AI-Native Scientific Evidence Graph for Sleep & Health**
 
@@ -79,7 +79,8 @@
 | 变现 | Affiliate 占位 | Affiliate + API + SaaS | 🔲 API ✅ / SaaS 路线图 |
 | 架构 | 单站点 | 多层系统 | ✅ 已实现 |
 | Evidence Score | 手动评分 | 公式化自动评分 | 🔲 v1 Scorer 已实现 |
-| 数据源 | 手动录入 | PubMed API 自动采集 | 🔲 v1 Fetcher 已实现 |
+| 数据源 | 手动录入 | PubMed API 自动采集 | ✅ Fetcher 已验证（227 篇入库） |
+| 数据库 | SQLite (MVP) | Supabase PostgreSQL (生产) | ✅ 已上线 |
 
 ---
 
@@ -127,15 +128,17 @@
 
 ### 当前数据规模
 
-| 指标 | 数量 |
-|---|---|
-| Claims | 11 |
-| Studies | 15 |
-| Topics | 8 |
-| Evidence Links | 31 |
-| Dose Mappings | 30 |
-| Population Fits | 48 |
-| PubMed 引用 | 15 |
+> 以下数字从 Supabase 生产数据库实时读取（`getHomeStats()`），首页 stats 可点击跳转。
+
+| 指标 | 数量 | 来源 |
+|---|---|---|
+| Claims | 246 | Supabase `claims` 表 |
+| Studies | 227 | Supabase `studies` 表（PubMed 自动采集） |
+| Topics | 8 | Supabase `topics` 表 |
+| Evidence Links | 31 | seed-data（待 pipeline 补充） |
+| Dose Mappings | 30 | seed-data |
+| Population Fits | 48 | seed-data |
+| PubMed 引用 | 227 | PubMed E-utilities API |
 
 ### 已覆盖主题
 
@@ -147,19 +150,29 @@ Glycine（2 claims）, Magnesium（2 claims）, Melatonin（2 claims）, Tart Ch
 
 ### 数据库
 
-- ORM: Prisma ✅
+- ORM: Prisma ✅（Schema 定义 + SQLite 本地开发）
 - MVP: SQLite ✅
-- Production: **Supabase PostgreSQL** 🔧 接入中（见 `docs/SUPABASE_SETUP.md`）
+- Production: **Supabase PostgreSQL** ✅ 已上线
 
-### 接入步骤
+#### 双数据源架构
 
-1. 在 [supabase.com](https://supabase.com) 创建项目（免费额度足够起步）
-2. 在 Supabase SQL Editor 运行 `supabase/init.sql` 创建全部表和索引
-3. 将 `Project URL` 和 `service_role key` 配置到腾讯云服务器环境变量
-4. 运行 `npx tsx scripts/test-supabase.ts` 验证连接
-5. 运行 `npx tsx scripts/seed-to-supabase.ts` 迁移现有数据（可选）
+系统采用 **双数据源设计**，通过 `isDbMode()` 自动切换：
 
-完成后，定时任务抓取的论文和 Claim 将真正写入数据库，网站内容自动增长。
+| 模式 | 条件 | 数据源 | 用途 |
+|---|---|---|---|
+| DB 模式 | `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` 均已配置 | Supabase PostgreSQL | 生产环境 |
+| 静态模式 | 环境变量缺失 | `src/data/seed-data.ts`（静态 TypeScript） | 开发/回退 |
+
+DB 模式下所有页面（首页、/claims、/topics、/studies）和 API 均从 Supabase 实时读取，首页 stats 数字反映数据库真实计数。
+
+#### 已验证的 Pipeline 运行
+
+```
+curl https://sleep.p1web.site/api/cron/fetch-papers
+→ {"papersFetched":227,"papersStored":227,"errors":[],"supabaseConfigured":true}
+```
+
+227 篇 PubMed 论文全部成功写入 Supabase `studies` 表，0 错误。
 
 ### Tables
 
@@ -374,13 +387,13 @@ Clamp to [0, 100]
 
 | 工作流 | 触发时间（北京时间） | 状态 |
 |---|---|---|
-| [Job 1] Fetch Papers | 每天 02:00 | 待验证（Supabase 接入后确认） |
-| [Job 2] AI Parse | 每小时 :00 | 待验证 |
-| [Job 3] Update Claims | 每小时 :15 | 待验证 |
-| [Job 4] Revalidate | 每小时 :30 | 待验证 |
-| [Job 5] SEO Update | 每天 03:00 | 待验证 |
-| [Job 6] Affiliate | 每周一 09:00 | 待验证 |
-| [Job 7] Newsletter | 每周五 18:00 | 待验证 |
+| [Job 1] Fetch Papers | 每天 02:00 | ✅ 已验证（227/227 成功入库） |
+| [Job 2] AI Parse | 每小时 :00 | 🔲 待 AI API Key 配置 |
+| [Job 3] Update Claims | 每小时 :15 | 🔲 待 AI API Key 配置 |
+| [Job 4] Revalidate | 每小时 :30 | ✅ 已配置 |
+| [Job 5] SEO Update | 每天 03:00 | ✅ 已配置 |
+| [Job 6] Affiliate | 每周一 09:00 | ✅ 已配置 |
+| [Job 7] Newsletter | 每周五 18:00 | ✅ 已配置 |
 
 > 每次运行都有详细日志，绿色 ✅ = 成功，红色 ❌ = 失败。
 
@@ -403,8 +416,8 @@ scripts/
 
 | 时间 | 页面数 | 状态 |
 |---|---|---|
-| Day 1 | 30 pages | ✅ 已达成（11 claims） |
-| Day 7 | 100-300 pages | 🔲 Pipeline v1 就绪 |
+| Day 1 | 30 pages | ✅ 已达成（11 seed claims + 227 PubMed studies） |
+| Day 7 | 100-300 pages | 🔄 进行中（227 studies 已入库，待 AI 提取 claims） |
 | Day 30 | 3,000+ pages | 🔲 路线图 |
 
 ---
@@ -441,10 +454,14 @@ Magnesium ─── improves sleep ─── Sleep latency
 
 ### Web（Next.js）✅ 已实现
 
+- 首页（实时 stats + 可点击跳转）✅
 - Claim 页面（核心，11 模块）✅
-- Topic 页面（SEO 入口）✅
+- Claims 列表页（从 Supabase 读取）✅
+- Studies 列表页（从 Supabase 读取，支持 ?studyType=rct 过滤）✅
+- Topic 页面（SEO 入口，从 Supabase 读取）✅
 - Search（关键词搜索）✅
 - API 文档页面 ✅
+- RSS Feed ✅
 
 ### Claim 页面 11 模块 ✅
 
@@ -601,43 +618,50 @@ ChatGPT, Claude, Gemini, Perplexity, AI Agents
 
 ## 十四、实现状态总结
 
-### 已完成（MVP + Pipeline v1）
+### 已完成（MVP + Pipeline v1 + Supabase 生产接入）
 
 - [x] Next.js 14 项目搭建 (App Router + TypeScript + Tailwind)
 - [x] Prisma Schema 设计 (6 个模型)
-- [x] 数据访问层 (lib/data.ts + lib/db.ts 双模式：Supabase / 静态)
-- [x] 11 个 Claims（含完整证据图谱）
-- [x] 15 个 Studies（含 PubMed 引用）
+- [x] 数据访问层 (lib/data.ts 静态 + lib/db.ts Supabase 双模式)
+- [x] 11 个 seed Claims（含完整证据图谱）
+- [x] 227 个 Studies（PubMed 自动采集，已入库 Supabase）
 - [x] 8 个 Topics
 - [x] Claim 详情页（11 个模块）
+- [x] Studies 列表页（支持 studyType 过滤）
 - [x] 3 个 REST API 端点
+- [x] 7 个 Cron API 路由（fetch-papers, ai-parse, update-claims, revalidate, seo-update, affiliate, newsletter）
 - [x] JSON-LD 结构化数据 (Article, FAQ, Breadcrumb, Website)
-- [x] Sitemap + Robots.txt
+- [x] Sitemap + Robots.txt + RSS Feed
 - [x] PubMed 论文采集器（Ingestion Layer v1）
 - [x] AI Claim 提取引擎（Evidence Engine Step 1-2）
 - [x] Evidence Score 计算器（v2 评分公式）
 - [x] Pipeline Runner + CLI（自动更新系统 v1）
 - [x] GitHub Actions 定时任务调度（7 个 Workflow）
+- [x] **Supabase PostgreSQL 生产数据库已上线** ✅
 - [x] Supabase 客户端封装（lib/supabase.ts）
-- [x] Supabase 生产数据库接入文档 + 初始化脚本（`docs/SUPABASE_SETUP.md`, `supabase/init.sql`）
-- [x] Seed 数据迁移脚本（`scripts/seed-to-supabase.ts`）
-- [x] Supabase 连接测试脚本（`scripts/test-supabase.ts`）
+- [x] Supabase 初始化脚本（supabase/init.sql，8 张表 + 索引）
+- [x] 首页 stats 实时读取 Supabase 计数（getHomeStats）
+- [x] 首页 stats 可点击跳转（Claims→/claims, Studies→/studies, Topics→/topics, RCTs→/studies?studyType=rct）
+- [x] /claims、/topics、/studies 页面从 Supabase 读取真实数据
+- [x] Seed 数据迁移脚本（scripts/seed-to-supabase.ts）
+- [x] Supabase 连接测试脚本（scripts/test-supabase.ts）
+- [x] 腾讯云服务器部署（sleep.p1web.site）
 
 ### 路线图
 
-- [x] PubMed 论文采集器（Ingestion Layer v1）
-- [x] AI Claim 提取引擎（Evidence Engine Step 1-2）
-- [x] Evidence Score 计算器（v2 评分公式）
-- [x] Pipeline Runner + CLI（自动更新系统 v1）
-- [ ] **Supabase 生产数据库接入** ← 当前重点（见 `docs/SUPABASE_SETUP.md`）
-- [ ] AI API 接入（DeepSeek/OpenAI）实现真实 Claim 提取
+- [x] PubMed 论文采集器（Ingestion Layer v1）✅ 已验证
+- [x] AI Claim 提取引擎（Evidence Engine Step 1-2）✅ 框架就绪
+- [x] Evidence Score 计算器（v2 评分公式）✅ v1
+- [x] Pipeline Runner + CLI（自动更新系统 v1）✅
+- [x] **Supabase 生产数据库接入** ✅ 已上线
+- [ ] **AI API 接入（DeepSeek/OpenAI）实现真实 Claim 提取** ← 当前重点
+- [ ] Pipeline 全链路验证（fetch → AI parse → update claims → revalidate）
 - [ ] GraphQL API
 - [ ] MCP Server
 - [ ] Podcast 生成（TTS）
 - [ ] Infographic 自动生成
 - [ ] Affiliate 链接接入
 - [ ] Subscription 系统
-- [ ] Vercel 部署 + Cron 定时运行
 - [ ] 社交分发
 
 ---
@@ -647,14 +671,15 @@ ChatGPT, Claude, Gemini, Perplexity, AI Agents
 | 层 | 技术选型 | 状态 |
 |---|---|---|
 | Frontend | Next.js 14 (App Router) + TypeScript + Tailwind CSS | ✅ |
-| Database | Prisma ORM + SQLite (MVP) → **Supabase PostgreSQL** (Production) | 🔧 接入中 |
-| API | Next.js Route Handlers (REST) | ✅ |
-| SEO | JSON-LD Schema + Sitemap + Robots.txt | ✅ |
-| Ingestion | PubMed E-utilities API | ✅ v1 |
-| AI Pipeline | DeepSeek API / OpenAI (Claim extraction, scoring) | ✅ v1 框架 |
+| Database | Prisma ORM (SQLite 本地) + **Supabase PostgreSQL** (生产) | ✅ 已上线 |
+| Data Access | 双数据源：lib/db.ts (Supabase) + lib/data.ts (静态回退) | ✅ |
+| API | Next.js Route Handlers (REST + Cron) | ✅ |
+| SEO | JSON-LD Schema + Sitemap + Robots.txt + RSS | ✅ |
+| Ingestion | PubMed E-utilities API | ✅ 已验证 (227 篇) |
+| AI Pipeline | DeepSeek API / OpenAI (Claim extraction, scoring) | 🔲 框架就绪，待 API Key |
 | Scoring | v2 Evidence Score 公式 | ✅ v1 |
-| Deployment | 腾讯云服务器 | ✅ 运行中 |
-| Cron | GitHub Actions 定时触发 | ✅ 7 个 Workflow 已配置 |
+| Deployment | 腾讯云服务器 (pm2/systemd, sleep.p1web.site) | ✅ 运行中 |
+| Cron | GitHub Actions 定时触发 (7 个 Workflow) | ✅ 已配置 |
 | Monitoring | GitHub Actions 运行日志 | ✅ [查看](https://github.com/redfather918/EvidenceHub-Sleep/actions) |
 
 ---
@@ -666,9 +691,10 @@ ChatGPT, Claude, Gemini, Perplexity, AI Agents
 
 ---
 
-*PRD v3.1 — Updated: 2026-07-06*
-*Build: 11 claims, 15 studies, 8 topics, 30 pages*
-*Pipeline: PubMed fetcher + AI extractor + Evidence scorer + CLI runner (v1)*
-*Cron: 7 GitHub Actions workflows scheduled*
-*Supabase: Init script + migration tools + setup guide ready*
+*PRD v4.0 — Updated: 2026-07-07*
+*Build: 246 claims, 227 studies (PubMed), 8 topics — live from Supabase*
+*Pipeline: PubMed fetcher ✅ verified (227/227) + AI extractor + Evidence scorer + CLI runner (v1)*
+*Database: Supabase PostgreSQL ✅ online (dual-source: Supabase / static fallback)*
+*Cron: 7 GitHub Actions workflows (fetch-papers verified, 6 pending AI key)*
+*Deployment: 腾讯云 (sleep.p1web.site) + GitHub Actions scheduling*
 *Test: All pages 200, 3 APIs verified, 11 modules confirmed, SEO validated*

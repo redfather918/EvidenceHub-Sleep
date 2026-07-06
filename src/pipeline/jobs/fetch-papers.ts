@@ -4,6 +4,7 @@
 
 import { fetchPapers } from "../pubmed-fetcher";
 import { upsertStudyDb, isDbMode, getAllClaimsDb } from "@/lib/db";
+import { isSupabaseConfigured } from "@/lib/supabase";
 import type { PubMedPaper } from "../types";
 import type { Study } from "@/lib/types";
 
@@ -12,6 +13,7 @@ export interface FetchPapersResult {
   papersStored: number;
   errors: string[];
   timestamp: string;
+  supabaseConfigured: boolean;
 }
 
 /**
@@ -25,7 +27,10 @@ export async function jobFetchPapers(): Promise<FetchPapersResult> {
     papersStored: 0,
     errors: [],
     timestamp: new Date().toISOString(),
+    supabaseConfigured: isSupabaseConfigured,
   };
+
+  console.log(`[Job 1: fetch-papers] Mode: ${isSupabaseConfigured ? "Supabase" : "Static (no DB)"}`);
 
   console.log("[Job 1: fetch-papers] Starting paper fetch from PubMed...");
 

@@ -291,7 +291,9 @@ export async function searchClaimsDb(query: string): Promise<Claim[]> {
 // ============================================================
 
 export async function upsertStudyDb(study: Partial<Study> & { pmid?: string }): Promise<string | null> {
-  if (!isDbMode()) return null;
+  if (!isDbMode()) {
+    throw new Error("upsertStudyDb called but Supabase is not configured (isDbMode=false)");
+  }
 
   const supabase = getSupabase()!;
   const { data, error } = await supabase
@@ -322,8 +324,9 @@ export async function upsertStudyDb(study: Partial<Study> & { pmid?: string }): 
     .single();
 
   if (error) {
-    console.error("[DB] Failed to upsert study:", error);
-    return null;
+    // Throw so the caller can capture the real reason (e.g. "relation does not exist",
+    // "permission denied", "duplicate key", etc.) in errors[].
+    throw new Error(`studies upsert failed for PMID ${study.pmid}: ${error.message} (code=${error.code})`);
   }
   return data?.id || null;
 }

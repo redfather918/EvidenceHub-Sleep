@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -47,6 +48,18 @@ export default function RootLayout({
             }),
           }}
         />
+        {/* Baidu Analytics */}
+        <Script id="baidu-analytics" strategy="afterInteractive">
+          {`
+            var _hmt = _hmt || [];
+            (function() {
+              var hm = document.createElement("script");
+              hm.src = "https://hm.baidu.com/hm.js?fbff7fe99f69a299db8ea1615cefe66b";
+              var s = document.getElementsByTagName("script")[0];
+              s.parentNode.insertBefore(hm, s);
+            })();
+          `}
+        </Script>
       </head>
       <body>
         <nav className="border-b border-gray-200 bg-white sticky top-0 z-50">

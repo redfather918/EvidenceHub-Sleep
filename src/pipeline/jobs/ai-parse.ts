@@ -114,6 +114,10 @@ export async function jobAiParse(): Promise<AiParseResult> {
           topicSlug,
           evidenceScore: score.evidenceScore,
           confidence: score.confidence,
+          humanRctScore: score.humanRctScore,
+          metaScore: score.metaScore,
+          mechanismScore: score.mechanismScore,
+          safetyScore: score.safetyScore,
           rctCount: score.rctCount,
           metaCount: score.metaCount,
           studyCount: score.studyCount,
@@ -121,6 +125,7 @@ export async function jobAiParse(): Promise<AiParseResult> {
           population: [claim.population],
           limitations: claim.limitations,
           mechanism: claim.mechanism,
+          faq: claim.faq,
           keywords: claim.keywords,
           relatedSlugs: [],
         });

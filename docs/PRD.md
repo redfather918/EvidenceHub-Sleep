@@ -149,7 +149,17 @@ Glycine（2 claims）, Magnesium（2 claims）, Melatonin（2 claims）, Tart Ch
 
 - ORM: Prisma ✅
 - MVP: SQLite ✅
-- Production: PostgreSQL（路线图）
+- Production: **Supabase PostgreSQL** 🔧 接入中（见 `docs/SUPABASE_SETUP.md`）
+
+### 接入步骤
+
+1. 在 [supabase.com](https://supabase.com) 创建项目（免费额度足够起步）
+2. 在 Supabase SQL Editor 运行 `supabase/init.sql` 创建全部表和索引
+3. 将 `Project URL` 和 `service_role key` 配置到腾讯云服务器环境变量
+4. 运行 `npx tsx scripts/test-supabase.ts` 验证连接
+5. 运行 `npx tsx scripts/seed-to-supabase.ts` 迁移现有数据（可选）
+
+完成后，定时任务抓取的论文和 Claim 将真正写入数据库，网站内容自动增长。
 
 ### Tables
 
@@ -355,6 +365,24 @@ Clamp to [0, 100]
 ```bash
 0 3 * * * npm run pipeline:daily
 ```
+
+### GitHub Actions 定时任务监控
+
+所有定时任务通过 GitHub Actions 调度运行：
+
+🔗 **[查看运行记录 → https://github.com/redfather918/EvidenceHub-Sleep/actions](https://github.com/redfather918/EvidenceHub-Sleep/actions)**
+
+| 工作流 | 触发时间（北京时间） | 状态 |
+|---|---|---|
+| [Job 1] Fetch Papers | 每天 02:00 | 待验证（Supabase 接入后确认） |
+| [Job 2] AI Parse | 每小时 :00 | 待验证 |
+| [Job 3] Update Claims | 每小时 :15 | 待验证 |
+| [Job 4] Revalidate | 每小时 :30 | 待验证 |
+| [Job 5] SEO Update | 每天 03:00 | 待验证 |
+| [Job 6] Affiliate | 每周一 09:00 | 待验证 |
+| [Job 7] Newsletter | 每周五 18:00 | 待验证 |
+
+> 每次运行都有详细日志，绿色 ✅ = 成功，红色 ❌ = 失败。
 
 ### Pipeline v1 架构
 
@@ -577,7 +605,7 @@ ChatGPT, Claude, Gemini, Perplexity, AI Agents
 
 - [x] Next.js 14 项目搭建 (App Router + TypeScript + Tailwind)
 - [x] Prisma Schema 设计 (6 个模型)
-- [x] 数据访问层 (lib/data.ts)
+- [x] 数据访问层 (lib/data.ts + lib/db.ts 双模式：Supabase / 静态)
 - [x] 11 个 Claims（含完整证据图谱）
 - [x] 15 个 Studies（含 PubMed 引用）
 - [x] 8 个 Topics
@@ -589,11 +617,20 @@ ChatGPT, Claude, Gemini, Perplexity, AI Agents
 - [x] AI Claim 提取引擎（Evidence Engine Step 1-2）
 - [x] Evidence Score 计算器（v2 评分公式）
 - [x] Pipeline Runner + CLI（自动更新系统 v1）
+- [x] GitHub Actions 定时任务调度（7 个 Workflow）
+- [x] Supabase 客户端封装（lib/supabase.ts）
+- [x] Supabase 生产数据库接入文档 + 初始化脚本（`docs/SUPABASE_SETUP.md`, `supabase/init.sql`）
+- [x] Seed 数据迁移脚本（`scripts/seed-to-supabase.ts`）
+- [x] Supabase 连接测试脚本（`scripts/test-supabase.ts`）
 
 ### 路线图
 
+- [x] PubMed 论文采集器（Ingestion Layer v1）
+- [x] AI Claim 提取引擎（Evidence Engine Step 1-2）
+- [x] Evidence Score 计算器（v2 评分公式）
+- [x] Pipeline Runner + CLI（自动更新系统 v1）
+- [ ] **Supabase 生产数据库接入** ← 当前重点（见 `docs/SUPABASE_SETUP.md`）
 - [ ] AI API 接入（DeepSeek/OpenAI）实现真实 Claim 提取
-- [ ] PostgreSQL 迁移
 - [ ] GraphQL API
 - [ ] MCP Server
 - [ ] Podcast 生成（TTS）
@@ -610,14 +647,15 @@ ChatGPT, Claude, Gemini, Perplexity, AI Agents
 | 层 | 技术选型 | 状态 |
 |---|---|---|
 | Frontend | Next.js 14 (App Router) + TypeScript + Tailwind CSS | ✅ |
-| Database | Prisma ORM + SQLite (MVP) → PostgreSQL (Production) | ✅ MVP |
+| Database | Prisma ORM + SQLite (MVP) → **Supabase PostgreSQL** (Production) | 🔧 接入中 |
 | API | Next.js Route Handlers (REST) | ✅ |
 | SEO | JSON-LD Schema + Sitemap + Robots.txt | ✅ |
 | Ingestion | PubMed E-utilities API | ✅ v1 |
 | AI Pipeline | DeepSeek API / OpenAI (Claim extraction, scoring) | ✅ v1 框架 |
 | Scoring | v2 Evidence Score 公式 | ✅ v1 |
-| Deployment | Vercel | 🔲 待部署 |
-| Cron | `npm run pipeline:daily` | ✅ v1 就绪 |
+| Deployment | 腾讯云服务器 | ✅ 运行中 |
+| Cron | GitHub Actions 定时触发 | ✅ 7 个 Workflow 已配置 |
+| Monitoring | GitHub Actions 运行日志 | ✅ [查看](https://github.com/redfather918/EvidenceHub-Sleep/actions) |
 
 ---
 
@@ -628,7 +666,9 @@ ChatGPT, Claude, Gemini, Perplexity, AI Agents
 
 ---
 
-*PRD v3.0 — Updated: 2026-07-04*
+*PRD v3.1 — Updated: 2026-07-06*
 *Build: 11 claims, 15 studies, 8 topics, 30 pages*
 *Pipeline: PubMed fetcher + AI extractor + Evidence scorer + CLI runner (v1)*
+*Cron: 7 GitHub Actions workflows scheduled*
+*Supabase: Init script + migration tools + setup guide ready*
 *Test: All pages 200, 3 APIs verified, 11 modules confirmed, SEO validated*

@@ -2,6 +2,7 @@
 // 将本地静态 seed-data.ts 导入 Supabase PostgreSQL
 // 运行: npx tsx scripts/seed-to-supabase.ts
 
+import "dotenv/config";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import {
   claims,

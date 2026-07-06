@@ -5,6 +5,7 @@
 //   npm run pipeline:live     # Run pipeline in live mode
 //   npm run pipeline:daily    # Daily cron job (live mode)
 
+import "dotenv/config";
 import { runPipeline } from "../src/pipeline/pipeline";
 
 async function main() {

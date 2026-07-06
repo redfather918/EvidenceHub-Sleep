@@ -8,6 +8,8 @@
 //   npm run job:affiliate        # Job 6: Update affiliate prices
 //   npm run job:newsletter       # Job 7: Send weekly newsletter
 
+import "dotenv/config";
+
 const jobName = process.argv[2];
 
 async function main() {

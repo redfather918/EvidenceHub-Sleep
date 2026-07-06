@@ -1,6 +1,7 @@
 // EvidenceHub Sleep — Supabase 连接测试脚本
 // 运行: npx tsx scripts/test-supabase.ts
 
+import "dotenv/config";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 
 async function test() {

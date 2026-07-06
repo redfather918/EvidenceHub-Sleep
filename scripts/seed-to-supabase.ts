@@ -27,26 +27,31 @@ async function migrate() {
 
   // 1. Topics
   console.log(`Migrating ${topics.length} topics...`);
+  const topicIdMap = new Map<string, string>(); // slug -> uuid
   for (const topic of topics) {
-    const { error } = await supabase.from("topics").upsert({
-      id: topic.id,
+    const { data, error } = await supabase.from("topics").upsert({
       slug: topic.slug,
       name: topic.name,
       description: topic.description,
       icon: topic.icon,
       claim_count: topic.claimCount,
       created_at: now,
-    }, { onConflict: "slug" });
-    if (error) console.error(`  Topic ${topic.slug}: ${error.message}`);
+    }, { onConflict: "slug" }).select("id").single();
+
+    if (error) {
+      console.error(`  Topic ${topic.slug}: ${error.message}`);
+    } else if (data) {
+      topicIdMap.set(topic.slug, data.id as string);
+    }
   }
   console.log("✅ Topics done.\n");
 
   // 2. Studies
-  console.log(`Migrating ${studies.length} studies...`);
-  const studyIdMap = new Map<string, string>(); // pmid -> id (for claim_study_map)
-  for (const study of studies) {
+  const studyList = Object.values(studies);
+  console.log(`Migrating ${studyList.length} studies...`);
+  const studyIdMap = new Map<string, string>(); // seed id/pmid -> db uuid
+  for (const study of studyList) {
     const { data, error } = await supabase.from("studies").upsert({
-      id: study.id,
       pmid: study.pmid,
       doi: study.doi,
       title: study.title,
@@ -89,34 +94,36 @@ async function migrate() {
       .eq("slug", claim.topicSlug)
       .single();
 
-    const { data, error } = await supabase.from("claims").upsert({
-      id: claim.id,
-      slug: claim.slug,
-      text: claim.text,
-      summary: claim.summary,
-      category: claim.category || "General",
-      topic_id: topicData?.id || null,
-      evidence_score: claim.evidenceScore || 0,
-      human_rct_score: claim.humanRctScore || 0,
-      meta_score: claim.metaScore || 0,
-      mechanism_score: claim.mechanismScore || 0,
-      safety_score: claim.safetyScore || 0,
-      confidence: claim.confidence || "moderate",
-      rct_count: claim.rctCount || 0,
-      meta_count: claim.metaCount || 0,
-      study_count: claim.studyCount || 0,
-      dose: claim.dose || null,
-      population: claim.population || [],
-      limitations: claim.limitations || [],
-      mechanism: claim.mechanism || [],
-      faq: claim.faq || [],
-      related_slugs: claim.relatedSlugs || [],
-      keywords: claim.keywords || [],
-      contradictions: [],
-      effect_size: {},
-      last_updated: claim.lastUpdated || now,
-      created_at: claim.createdAt || now,
-    }, { onConflict: "slug" }).select("id").single();
+    const { data, error } = await supabase.from("claims").upsert(
+      {
+        slug: claim.slug,
+        text: claim.text,
+        summary: claim.summary,
+        category: claim.category || "General",
+        topic_id: topicData?.id || null,
+        evidence_score: claim.evidenceScore || 0,
+        human_rct_score: claim.humanRctScore || 0,
+        meta_score: claim.metaScore || 0,
+        mechanism_score: claim.mechanismScore || 0,
+        safety_score: claim.safetyScore || 0,
+        confidence: claim.confidence || "moderate",
+        rct_count: claim.rctCount || 0,
+        meta_count: claim.metaCount || 0,
+        study_count: claim.studyCount || 0,
+        dose: claim.dose || null,
+        population: claim.population || [],
+        limitations: claim.limitations || [],
+        mechanism: claim.mechanism || [],
+        faq: claim.faq || [],
+        related_slugs: claim.relatedSlugs || [],
+        keywords: claim.keywords || [],
+        contradictions: [],
+        effect_size: {},
+        last_updated: claim.lastUpdated || now,
+        created_at: claim.createdAt || now,
+      },
+      { onConflict: "slug" }
+    ).select("id").single();
 
     if (error) {
       console.error(`  Claim ${claim.slug}: ${error.message}`);

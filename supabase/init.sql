@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS public.studies (
     pmid          TEXT UNIQUE,
     doi           TEXT,
     title         TEXT NOT NULL,
+    abstract      TEXT,
     journal       TEXT NOT NULL DEFAULT '',
     authors       TEXT NOT NULL DEFAULT '',
     year          INTEGER,

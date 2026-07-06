@@ -1,0 +1,33 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/cron/fetch-papers",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/ai-parse",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/update-claims",
+      "schedule": "15 * * * *"
+    },
+    {
+      "path": "/api/cron/revalidate",
+      "schedule": "30 * * * *"
+    },
+    {
+      "path": "/api/cron/seo-update",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/affiliate-update",
+      "schedule": "0 6 * * 1"
+    },
+    {
+      "path": "/api/cron/newsletter-send",
+      "schedule": "0 9 * * 5"
+    }
+  ]
+}

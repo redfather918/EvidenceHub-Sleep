@@ -5,6 +5,9 @@ import { getTopicBySlug, getClaimsByTopic, getAllTopics } from "@/lib/data";
 import { generateTopicMetadata } from "@/lib/seo";
 import { ClaimCard } from "@/components/ClaimCard";
 
+// ISR: revalidate every hour
+export const revalidate = 3600;
+
 export function generateStaticParams() {
   return getAllTopics().map((topic) => ({ slug: topic.slug }));
 }

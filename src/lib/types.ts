@@ -42,6 +42,7 @@ export interface Study {
   pmid?: string;
   doi?: string;
   title: string;
+  abstract?: string;
   journal: string;
   authors: string;
   year?: number;

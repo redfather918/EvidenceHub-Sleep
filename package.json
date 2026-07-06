@@ -12,23 +12,29 @@
     "db:studio": "prisma studio",
     "pipeline": "tsx scripts/run-pipeline.ts",
     "pipeline:live": "PIPELINE_DRY_RUN=false tsx scripts/run-pipeline.ts --live",
-    "pipeline:daily": "PIPELINE_DRY_RUN=false tsx scripts/run-pipeline.ts --live"
+    "pipeline:daily": "PIPELINE_DRY_RUN=false tsx scripts/run-pipeline.ts --live",
+    "job:fetch-papers": "tsx scripts/run-job.ts fetch-papers",
+    "job:ai-parse": "tsx scripts/run-job.ts ai-parse",
+    "job:update-claims": "tsx scripts/run-job.ts update-claims",
+    "job:affiliate": "tsx scripts/run-job.ts affiliate",
+    "job:newsletter": "tsx scripts/run-job.ts newsletter"
   },
   "dependencies": {
+    "@prisma/client": "^5.16.2",
+    "@supabase/supabase-js": "^2.110.0",
     "next": "14.2.5",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
     "prisma": "^5.16.2",
-    "@prisma/client": "^5.16.2"
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "typescript": "^5.5.3",
     "@types/node": "^20.14.10",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
-    "tailwindcss": "^3.4.6",
-    "postcss": "^8.4.39",
     "autoprefixer": "^10.4.19",
-    "tsx": "^4.16.2"
+    "postcss": "^8.4.39",
+    "tailwindcss": "^3.4.6",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.3"
   }
 }

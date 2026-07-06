@@ -13,6 +13,9 @@ import {
 import { EvidenceScoreBadge } from "@/components/EvidenceScoreBadge";
 import { ClaimCard } from "@/components/ClaimCard";
 
+// ISR: revalidate every hour (also triggered on-demand by /api/cron/revalidate)
+export const revalidate = 3600;
+
 export function generateStaticParams() {
   return getAllClaims().map((claim) => ({ slug: claim.slug }));
 }

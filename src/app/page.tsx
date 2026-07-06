@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { getTrendingClaims, getLatestClaims, getAllTopics } from "@/lib/data";
+import { getHomeStats } from "@/lib/db";
 import { ClaimCard } from "@/components/ClaimCard";
 
-export default function HomePage() {
+export default async function HomePage() {
   const trendingClaims = getTrendingClaims(6);
   const latestClaims = getLatestClaims(4);
   const topics = getAllTopics();
+  const stats = await getHomeStats();
 
   return (
     <div className="space-y-12">
@@ -53,10 +55,10 @@ export default function HomePage() {
       {/* Stats bar */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Claims", value: "11" },
-          { label: "Studies", value: "15" },
-          { label: "Topics", value: "8" },
-          { label: "Human RCTs", value: "15" },
+          { label: "Claims", value: stats.claims },
+          { label: "Studies", value: stats.studies },
+          { label: "Topics", value: stats.topics },
+          { label: "Human RCTs", value: stats.humanRcts },
         ].map((stat) => (
           <div key={stat.label} className="bg-white rounded-lg border border-gray-200 p-4 text-center">
             <div className="text-2xl font-bold text-brand-700">{stat.value}</div>

@@ -402,6 +402,45 @@ export async function linkStudyToClaimDb(
   return true;
 }
 
+// ============================================================
+// Statistics
+// ============================================================
+
+export async function getHomeStats(): Promise<{
+  claims: number;
+  studies: number;
+  topics: number;
+  humanRcts: number;
+}> {
+  // Per PRD MVP Status: these four counters reflect the whole system's size.
+  // - claims/studies/topics: real COUNT from Supabase (or seed-data fallback in static mode)
+  // - humanRcts: subset of studies where study_type = 'rct'
+  if (!isDbMode()) {
+    return {
+      claims: claimsData.length,
+      studies: Object.keys(studiesData).length,
+      topics: topicsData.length,
+      humanRcts: Object.values(studiesData).filter((s) => s.studyType === "rct").length,
+    };
+  }
+
+  const supabase = getSupabase()!;
+  // count:'exact' returns the real total; head:true skips row data for efficiency.
+  const [claimsRes, studiesRes, topicsRes, rctsRes] = await Promise.all([
+    supabase.from("claims").select("id", { count: "exact", head: true }),
+    supabase.from("studies").select("id", { count: "exact", head: true }),
+    supabase.from("topics").select("id", { count: "exact", head: true }),
+    supabase.from("studies").select("id", { count: "exact", head: true }).eq("study_type", "rct"),
+  ]);
+
+  return {
+    claims: claimsRes.count ?? 0,
+    studies: studiesRes.count ?? 0,
+    topics: topicsRes.count ?? 0,
+    humanRcts: rctsRes.count ?? 0,
+  };
+}
+
 export async function logPipelineRunDb(run: {
   status: "running" | "success" | "failed" | "partial";
   papersFetched: number;

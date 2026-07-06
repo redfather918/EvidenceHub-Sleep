@@ -2,21 +2,21 @@
 // Returns aggregated evidence for a topic/compound
 
 import { NextResponse } from "next/server";
-import { buildEvidenceApiResponse, getAllTopics } from "@/lib/data";
+import { buildEvidenceApiResponseDb, getAllTopicsDb } from "@/lib/db";
 
 export async function GET(
   request: Request,
   { params }: { params: { topic: string } }
 ) {
-  const data = buildEvidenceApiResponse(params.topic);
+  const data = await buildEvidenceApiResponseDb(params.topic);
 
   if (!data) {
-    const topics = getAllTopics().map((t) => t.slug);
+    const topics = await getAllTopicsDb();
     return NextResponse.json(
       {
         error: "Topic not found",
         topic: params.topic,
-        availableTopics: topics,
+        availableTopics: topics.map((t) => t.slug),
       },
       { status: 404 }
     );

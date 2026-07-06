@@ -1,7 +1,7 @@
 // Search page
 
 import Link from "next/link";
-import { searchClaims, getAllClaims } from "@/lib/data";
+import { searchClaimsDb, getAllClaimsDb } from "@/lib/db";
 import { ClaimCard } from "@/components/ClaimCard";
 
 export const metadata = {
@@ -9,13 +9,13 @@ export const metadata = {
   description: "Search evidence-based sleep claims and research.",
 };
 
-export default function SearchPage({
+export default async function SearchPage({
   searchParams,
 }: {
   searchParams: { q?: string };
 }) {
   const query = searchParams.q || "";
-  const results = query ? searchClaims(query) : getAllClaims();
+  const results = query ? await searchClaimsDb(query) : await getAllClaimsDb();
 
   return (
     <div>

@@ -2,13 +2,13 @@
 // Returns structured claim data for AI consumption
 
 import { NextResponse } from "next/server";
-import { buildClaimApiResponse } from "@/lib/data";
+import { buildClaimApiResponseDb } from "@/lib/db";
 
 export async function GET(
   request: Request,
   { params }: { params: { slug: string } }
 ) {
-  const data = buildClaimApiResponse(params.slug);
+  const data = await buildClaimApiResponseDb(params.slug);
 
   if (!data) {
     return NextResponse.json(

@@ -3,7 +3,7 @@
 
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getClaimWithRelations, getAllClaims } from "@/lib/data";
+import { getAllClaimsDb, getClaimWithRelationsDb } from "@/lib/db";
 import {
   generateClaimJsonLd,
   generateFaqJsonLd,
@@ -16,18 +16,19 @@ import { ClaimCard } from "@/components/ClaimCard";
 // ISR: revalidate every hour (also triggered on-demand by /api/cron/revalidate)
 export const revalidate = 3600;
 
-export function generateStaticParams() {
-  return getAllClaims().map((claim) => ({ slug: claim.slug }));
+export async function generateStaticParams() {
+  const claims = await getAllClaimsDb();
+  return claims.map((claim) => ({ slug: claim.slug }));
 }
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
-  const claim = getClaimWithRelations(params.slug);
+  const claim = await getClaimWithRelationsDb(params.slug);
   if (!claim) return {};
   return generateClaimMetadata(claim);
 }
 
-export default function ClaimPage({ params }: { params: { slug: string } }) {
-  const claim = getClaimWithRelations(params.slug);
+export default async function ClaimPage({ params }: { params: { slug: string } }) {
+  const claim = await getClaimWithRelationsDb(params.slug);
   if (!claim) notFound();
 
   const claimJsonLd = generateClaimJsonLd(claim);

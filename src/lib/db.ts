@@ -5,11 +5,13 @@
 import { getSupabase, isSupabaseConfigured } from "./supabase";
 import type {
   Claim,
+  ClaimApiResponse,
   ClaimWithRelations,
+  DoseMapping,
+  EvidenceApiResponse,
+  PopulationFit,
   Study,
   Topic,
-  DoseMapping,
-  PopulationFit,
 } from "./types";
 import {
   claims as claimsData,
@@ -38,7 +40,7 @@ export async function getAllClaimsDb(): Promise<Claim[]> {
   const supabase = getSupabase()!;
   const { data, error } = await supabase
     .from("claims")
-    .select("*")
+    .select("*, topic:topic_id(slug)")
     .order("evidence_score", { ascending: false });
 
   if (error || !data) {
@@ -46,7 +48,12 @@ export async function getAllClaimsDb(): Promise<Claim[]> {
     return claimsData;
   }
 
-  return data.map(rowToClaim);
+  return data.map((row) => {
+    const claim = rowToClaim(row);
+    const topic = (row.topic as { slug?: string } | undefined);
+    claim.topicSlug = topic?.slug || "";
+    return claim;
+  });
 }
 
 export async function getClaimBySlugDb(slug: string): Promise<Claim | undefined> {
@@ -55,12 +62,15 @@ export async function getClaimBySlugDb(slug: string): Promise<Claim | undefined>
   const supabase = getSupabase()!;
   const { data, error } = await supabase
     .from("claims")
-    .select("*")
+    .select("*, topic:topic_id(slug)")
     .eq("slug", slug)
     .single();
 
   if (error || !data) return undefined;
-  return rowToClaim(data);
+  const claim = rowToClaim(data);
+  const topic = (data.topic as { slug?: string } | undefined);
+  claim.topicSlug = topic?.slug || "";
+  return claim;
 }
 
 export async function getTrendingClaimsDb(limit = 6): Promise<Claim[]> {
@@ -113,12 +123,17 @@ export async function getClaimsByTopicDb(topicSlug: string): Promise<Claim[]> {
 
   const { data, error } = await supabase
     .from("claims")
-    .select("*")
+    .select("*, topic:topic_id(slug)")
     .eq("topic_id", topicData.id)
     .order("evidence_score", { ascending: false });
 
   if (error || !data) return [];
-  return data.map(rowToClaim);
+  return data.map((row) => {
+    const claim = rowToClaim(row);
+    const topic = (row.topic as { slug?: string } | undefined);
+    claim.topicSlug = topic?.slug || "";
+    return claim;
+  });
 }
 
 export async function getClaimWithRelationsDb(slug: string): Promise<ClaimWithRelations | undefined> {
@@ -190,6 +205,53 @@ export async function getClaimWithRelationsDb(slug: string): Promise<ClaimWithRe
     populationFits: (popFitData || []).map(rowToPopulationFit),
     relatedClaims,
     topic: topicData ? rowToTopic(topicData) : undefined,
+  };
+}
+
+// ============================================================
+// API response helpers
+// ============================================================
+
+export async function buildClaimApiResponseDb(slug: string): Promise<ClaimApiResponse | undefined> {
+  const claim = await getClaimBySlugDb(slug);
+  if (!claim) return undefined;
+
+  return {
+    slug: claim.slug,
+    text: claim.text,
+    confidence: claim.evidenceScore,
+    confidenceLevel: claim.confidence,
+    rcts: claim.rctCount,
+    meta: claim.metaCount,
+    dose: claim.dose,
+    population: claim.population,
+    evidenceScore: claim.evidenceScore,
+    lastUpdated: claim.lastUpdated,
+  };
+}
+
+export async function buildEvidenceApiResponseDb(topicSlug: string): Promise<EvidenceApiResponse | undefined> {
+  const topic = await getTopicBySlugDb(topicSlug);
+  if (!topic) return undefined;
+
+  const topicClaims = await getClaimsByTopicDb(topicSlug);
+  const totalStudies = topicClaims.reduce((sum, c) => sum + c.studyCount, 0);
+  const avgScore =
+    topicClaims.length > 0
+      ? Math.round(topicClaims.reduce((sum, c) => sum + c.evidenceScore, 0) / topicClaims.length)
+      : 0;
+  const strength = avgScore >= 85 ? "strong" : avgScore >= 70 ? "moderate" : "limited";
+
+  return {
+    topic: topic.name,
+    summary: topic.description,
+    strength,
+    studies: totalStudies,
+    claims: topicClaims.map((c) => ({
+      slug: c.slug,
+      text: c.text,
+      score: c.evidenceScore,
+    })),
   };
 }
 

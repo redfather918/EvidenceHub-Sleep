@@ -2,7 +2,7 @@
 // Returns matching claims
 
 import { NextRequest, NextResponse } from "next/server";
-import { searchClaims } from "@/lib/data";
+import { searchClaimsDb } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   const query = request.nextUrl.searchParams.get("q") || "";
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     }, { status: 400 });
   }
 
-  const results = searchClaims(query).slice(0, limit);
+  const results = (await searchClaimsDb(query)).slice(0, limit);
 
   return NextResponse.json({
     query,

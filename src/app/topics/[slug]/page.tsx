@@ -1,28 +1,29 @@
 // Topic detail page
 
 import { notFound } from "next/navigation";
-import { getTopicBySlug, getClaimsByTopic, getAllTopics } from "@/lib/data";
+import { getTopicBySlugDb, getClaimsByTopicDb, getAllTopicsDb } from "@/lib/db";
 import { generateTopicMetadata } from "@/lib/seo";
 import { ClaimCard } from "@/components/ClaimCard";
 
 // ISR: revalidate every hour
 export const revalidate = 3600;
 
-export function generateStaticParams() {
-  return getAllTopics().map((topic) => ({ slug: topic.slug }));
+export async function generateStaticParams() {
+  const topics = await getAllTopicsDb();
+  return topics.map((topic) => ({ slug: topic.slug }));
 }
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
-  const topic = getTopicBySlug(params.slug);
+  const topic = await getTopicBySlugDb(params.slug);
   if (!topic) return {};
   return generateTopicMetadata(topic);
 }
 
-export default function TopicPage({ params }: { params: { slug: string } }) {
-  const topic = getTopicBySlug(params.slug);
+export default async function TopicPage({ params }: { params: { slug: string } }) {
+  const topic = await getTopicBySlugDb(params.slug);
   if (!topic) notFound();
 
-  const claims = getClaimsByTopic(params.slug);
+  const claims = await getClaimsByTopicDb(params.slug);
   const avgScore =
     claims.length > 0
       ? Math.round(claims.reduce((sum, c) => sum + c.evidenceScore, 0) / claims.length)

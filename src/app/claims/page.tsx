@@ -1,6 +1,6 @@
 // Claims listing page
 
-import { getAllClaims } from "@/lib/data";
+import { getAllClaimsDb } from "@/lib/db";
 import { ClaimCard } from "@/components/ClaimCard";
 
 export const metadata = {
@@ -8,8 +8,8 @@ export const metadata = {
   description: "Browse all evidence-backed sleep claims with full study details and evidence scores.",
 };
 
-export default function ClaimsPage() {
-  const claims = getAllClaims();
+export default async function ClaimsPage() {
+  const claims = await getAllClaimsDb();
   const categories = [...new Set(claims.map((c) => c.category))];
 
   return (

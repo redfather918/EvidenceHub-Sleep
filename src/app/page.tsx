@@ -55,15 +55,19 @@ export default async function HomePage() {
       {/* Stats bar */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Claims", value: stats.claims },
-          { label: "Studies", value: stats.studies },
-          { label: "Topics", value: stats.topics },
-          { label: "Human RCTs", value: stats.humanRcts },
+          { label: "Claims", value: stats.claims, href: "/claims" },
+          { label: "Studies", value: stats.studies, href: "/studies" },
+          { label: "Topics", value: stats.topics, href: "/topics" },
+          { label: "Human RCTs", value: stats.humanRcts, href: "/studies?studyType=rct" },
         ].map((stat) => (
-          <div key={stat.label} className="bg-white rounded-lg border border-gray-200 p-4 text-center">
+          <Link
+            key={stat.label}
+            href={stat.href}
+            className="block bg-white rounded-lg border border-gray-200 p-4 text-center hover:shadow-md hover:border-brand-300 transition-all"
+          >
             <div className="text-2xl font-bold text-brand-700">{stat.value}</div>
             <div className="text-sm text-gray-500">{stat.label}</div>
-          </div>
+          </Link>
         ))}
       </section>
 

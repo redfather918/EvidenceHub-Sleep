@@ -259,6 +259,39 @@ export async function getTopicBySlugDb(slug: string): Promise<Topic | undefined>
   return rowToTopic(data);
 }
 
+export async function getAllStudiesDb(): Promise<Study[]> {
+  if (!isDbMode()) {
+    return Object.values(studiesData);
+  }
+
+  const supabase = getSupabase()!;
+  const { data, error } = await supabase.from("studies").select("*").order("created_at", { ascending: false });
+  if (error) throw new Error(`getAllStudiesDb failed: ${error.message}`);
+  return (data || []).map(rowToStudy);
+}
+
+export async function getStudyByIdDb(id: string): Promise<Study | undefined> {
+  if (!isDbMode()) {
+    return studiesData[id];
+  }
+
+  const supabase = getSupabase()!;
+  const { data, error } = await supabase.from("studies").select("*").eq("id", id).single();
+  if (error || !data) return undefined;
+  return rowToStudy(data);
+}
+
+export async function getStudyByPmidDb(pmid: string): Promise<Study | undefined> {
+  if (!isDbMode()) {
+    return Object.values(studiesData).find((s) => s.pmid === pmid);
+  }
+
+  const supabase = getSupabase()!;
+  const { data, error } = await supabase.from("studies").select("*").eq("pmid", pmid).single();
+  if (error || !data) return undefined;
+  return rowToStudy(data);
+}
+
 // ============================================================
 // Search
 // ============================================================

@@ -5,11 +5,11 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "EvidenceHub Sleep — AI-Driven Sleep Evidence Knowledge System",
+    default: "EvidenceHub Sleep — Evidence-Based Sleep Science",
     template: "%s | EvidenceHub Sleep",
   },
   description:
-    "A computable knowledge graph for sleep science. Get evidence-based answers on glycine, magnesium, melatonin, and more — structured for humans and AI.",
+    "Evidence-based answers on glycine, magnesium, melatonin and more. Based on human RCTs and meta-analyses. Not marketing — structured, scored, and AI-ready.",
   keywords: [
     "sleep evidence",
     "sleep research",
@@ -18,12 +18,45 @@ export const metadata: Metadata = {
     "melatonin",
     "evidence-based sleep",
     "sleep RCT",
+    "sleep supplements",
+    "sleep science",
+    "PubMed sleep",
   ],
-  metadataBase: new URL("https://evidencehubsleep.com"),
+  metadataBase: new URL("https://sleep.p1web.site"),
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
-    title: "EvidenceHub Sleep",
-    description: "A computable knowledge graph for sleep science.",
+    title: "EvidenceHub Sleep — Evidence-Based Sleep Science",
+    description: "Evidence-based answers on glycine, magnesium, melatonin and more. Based on human RCTs and meta-analyses.",
     type: "website",
+    siteName: "EvidenceHub Sleep",
+    url: "https://sleep.p1web.site",
+    images: [
+      {
+        url: "/og-default.png",
+        width: 1200,
+        height: 630,
+        alt: "EvidenceHub Sleep — Evidence-Based Sleep Science",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "EvidenceHub Sleep",
+    description: "Evidence-based sleep science knowledge graph.",
+    images: ["/og-default.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
   },
 };
 
@@ -35,6 +68,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* JSON-LD: WebSite + SearchAction */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -42,9 +76,32 @@ export default function RootLayout({
               "@context": "https://schema.org",
               "@type": "WebSite",
               name: "EvidenceHub Sleep",
-              url: "https://evidencehubsleep.com",
+              url: "https://sleep.p1web.site",
               description:
                 "AI-driven evidence-based sleep knowledge system. Computable evidence graph for sleep science.",
+              potentialAction: {
+                "@type": "SearchAction",
+                target: {
+                  "@type": "EntryPoint",
+                  urlTemplate: "https://sleep.p1web.site/search?q={search_term_string}",
+                },
+                "query-input": "required name=search_term_string",
+              },
+            }),
+          }}
+        />
+        {/* JSON-LD: Organization */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: "EvidenceHub Sleep",
+              url: "https://sleep.p1web.site",
+              description:
+                "AI-driven evidence-based sleep knowledge system. Computable evidence graph for sleep science.",
+              sameAs: [],
             }),
           }}
         />

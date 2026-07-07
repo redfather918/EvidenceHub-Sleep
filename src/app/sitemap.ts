@@ -3,7 +3,7 @@
 import { MetadataRoute } from "next";
 import { getAllClaims, getAllTopics } from "@/lib/data";
 
-const SITE_URL = "https://evidencehubsleep.com";
+const SITE_URL = "https://sleep.p1web.site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticPages: MetadataRoute.Sitemap = [

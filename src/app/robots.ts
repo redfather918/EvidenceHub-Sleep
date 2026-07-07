@@ -9,6 +9,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: ["/api/"],
     },
-    sitemap: "https://evidencehubsleep.com/sitemap.xml",
+    sitemap: "https://sleep.p1web.site/sitemap.xml",
   };
 }

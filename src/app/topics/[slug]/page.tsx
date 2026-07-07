@@ -1,8 +1,9 @@
 // Topic detail page
 
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { getTopicBySlugDb, getClaimsByTopicDb, getAllTopicsDb } from "@/lib/db";
-import { generateTopicMetadata } from "@/lib/seo";
+import { generateTopicMetadata, generateBreadcrumbJsonLd } from "@/lib/seo";
 import { ClaimCard } from "@/components/ClaimCard";
 
 // ISR: revalidate every hour
@@ -31,8 +32,38 @@ export default async function TopicPage({ params }: { params: { slug: string } }
   const totalStudies = claims.reduce((sum, c) => sum + c.studyCount, 0);
   const totalRcts = claims.reduce((sum, c) => sum + c.rctCount, 0);
 
+  const breadcrumbJsonLd = generateBreadcrumbJsonLd([
+    { name: "Home", url: "/" },
+    { name: "Topics", url: "/topics" },
+    { name: topic.name, url: `/topics/${topic.slug}` },
+  ]);
+
+  const collectionPageJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: `${topic.name} — Sleep Evidence`,
+    description: topic.description,
+    url: `https://sleep.p1web.site/topics/${topic.slug}`,
+    hasPart: claims.map((c) => ({
+      "@type": "Article",
+      headline: c.text,
+      url: `https://sleep.p1web.site/claim/${c.slug}`,
+    })),
+  };
+
   return (
     <div>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionPageJsonLd) }} />
+
+      <nav className="text-sm text-gray-400 mb-4">
+        <Link href="/" className="hover:text-brand-600">Home</Link>
+        {" / "}
+        <Link href="/topics" className="hover:text-brand-600">Topics</Link>
+        {" / "}
+        <span className="text-gray-600">{topic.name}</span>
+      </nav>
+
       <header className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">{topic.name}</h1>
         <p className="text-lg text-gray-600">{topic.description}</p>

@@ -3,7 +3,7 @@
 
 import type { ClaimWithRelations, Claim, Topic } from "./types";
 
-const SITE_URL = "https://evidencehubsleep.com";
+const SITE_URL = "https://sleep.p1web.site";
 
 // ============================================================
 // JSON-LD: Claim Page
@@ -122,17 +122,31 @@ export function generateClaimMetadata(claim: Claim) {
     title,
     description,
     keywords,
+    alternates: {
+      canonical: `/claim/${claim.slug}`,
+    },
     openGraph: {
       title,
       description,
       url: `${SITE_URL}/claim/${claim.slug}`,
       type: "article",
       siteName: "EvidenceHub Sleep",
+      publishedTime: claim.createdAt,
+      modifiedTime: claim.lastUpdated,
+      images: [
+        {
+          url: "/og-default.png",
+          width: 1200,
+          height: 630,
+          alt: claim.text,
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image" as const,
       title,
       description,
+      images: ["/og-default.png"],
     },
   };
 }
@@ -141,7 +155,22 @@ export function generateTopicMetadata(topic: Topic) {
   return {
     title: `${topic.name} — Sleep Evidence | EvidenceHub`,
     description: topic.description,
-    keywords: `${topic.name}, sleep, evidence, research`,
+    keywords: `${topic.name}, sleep, evidence, research, ${topic.name} sleep`,
+    alternates: {
+      canonical: `/topics/${topic.slug}`,
+    },
+    openGraph: {
+      title: `${topic.name} — Sleep Evidence`,
+      description: topic.description,
+      url: `${SITE_URL}/topics/${topic.slug}`,
+      type: "website",
+      siteName: "EvidenceHub Sleep",
+    },
+    twitter: {
+      card: "summary_large_image" as const,
+      title: `${topic.name} — Sleep Evidence`,
+      description: topic.description,
+    },
   };
 }
 

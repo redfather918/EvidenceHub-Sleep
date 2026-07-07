@@ -5,7 +5,16 @@ import { getAllTopicsDb, getClaimsByTopicDb } from "@/lib/db";
 
 export const metadata = {
   title: "Topics — Sleep Evidence by Compound",
-  description: "Browse sleep evidence by compound: glycine, magnesium, melatonin, and more.",
+  description: "Browse sleep evidence by compound: glycine, magnesium, melatonin, ashwagandha and more. Each topic includes evidence scores and human study counts.",
+  alternates: {
+    canonical: "/topics",
+  },
+  openGraph: {
+    title: "Topics — Sleep Evidence by Compound",
+    description: "Browse sleep evidence by compound: glycine, magnesium, melatonin and more.",
+    url: "/topics",
+    type: "website",
+  },
 };
 
 export default async function TopicsPage() {
@@ -25,6 +34,26 @@ export default async function TopicsPage() {
 
   return (
     <div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "Home", item: "https://sleep.p1web.site/" },
+              { "@type": "ListItem", position: 2, name: "Topics", item: "https://sleep.p1web.site/topics" },
+            ],
+          }),
+        }}
+      />
+
+      <nav className="text-sm text-gray-400 mb-4">
+        <Link href="/" className="hover:text-brand-600">Home</Link>
+        {" / "}
+        <span className="text-gray-600">Topics</span>
+      </nav>
+
       <header className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Topics</h1>
         <p className="text-gray-600">Browse evidence by compound or intervention</p>

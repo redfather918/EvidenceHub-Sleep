@@ -2,10 +2,10 @@
 // Independent, schedulable job: takes fetched papers and extracts claims via AI.
 // Reads unprocessed papers, runs AI extraction, outputs ExtractedClaim objects.
 
-import { extractClaim, detectTopicSlug, detectCategory } from "../ai-extractor";
+import { extractClaim, detectTopicSlug, detectCategory, findSimilarClaimDb } from "../ai-extractor";
 import { calculateEvidenceScore } from "../evidence-scorer";
 import { fetchPapers } from "../pubmed-fetcher";
-import { upsertStudyDb, upsertClaimDb, linkStudyToClaimDb, isDbMode, getAllClaimsDb } from "@/lib/db";
+import { upsertStudyDb, upsertClaimDb, linkStudyToClaimDb, isDbMode, getAllClaimsDb, getClaimBySlugDb } from "@/lib/db";
 import { generateSlug } from "../pipeline";
 import type { PubMedPaper, ExtractedClaim } from "../types";
 import type { Claim } from "@/lib/types";
@@ -105,7 +105,21 @@ export async function jobAiParse(): Promise<AiParseResult> {
           strength: score.evidenceScore >= 85 ? 5 : score.evidenceScore >= 70 ? 4 : 3,
         });
 
-        // Store claim
+        // Store claim — dedup against DB first
+        const similar = await findSimilarClaimDb(claim);
+        if (similar.matched && similar.existingSlug) {
+          console.log(`  [DEDUP] Similar claim found (${(similar.similarity * 100).toFixed(0)}%): ${similar.existingSlug}`);
+          // Link study to existing claim instead of creating a duplicate
+          if (studyId && similar.existingSlug) {
+            const existing = await getClaimBySlugDb(similar.existingSlug);
+            if (existing?.id) {
+              await linkStudyToClaimDb(existing.id, studyId);
+              result.claimsStored++;
+            }
+          }
+          continue;
+        }
+
         const claimId = await upsertClaimDb({
           slug,
           text: claim.text,

@@ -27,6 +27,32 @@ import {
 } from "@/data/seed-data";
 
 // ============================================================
+// Claim deduplication — defensive layer against duplicate rows
+// The pipeline (ai-parse) can insert claims with different slugs
+// but similar text. This normalises text and keeps only the first
+// occurrence per unique text (highest evidence_score wins when sorted).
+// ============================================================
+
+function normalizeClaimText(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Deduplicate a list of claims by normalized text, keeping first (assumes sorted). */
+function dedupeClaims(claims: Claim[]): Claim[] {
+  const seen = new Set<string>();
+  return claims.filter((c) => {
+    const norm = normalizeClaimText(c.text);
+    if (seen.has(norm)) return false;
+    seen.add(norm);
+    return true;
+  });
+}
+
+// ============================================================
 // Mode detection
 // ============================================================
 
@@ -52,12 +78,17 @@ export async function getAllClaimsDb(): Promise<Claim[]> {
     return claimsData;
   }
 
-  return data.map((row) => {
+  const claims = data.map((row) => {
     const claim = rowToClaim(row);
     const topic = (row.topic as { slug?: string } | undefined);
     claim.topicSlug = topic?.slug || "";
     return claim;
   });
+
+  // Deduplicate: the pipeline can create rows with different slugs but
+  // similar text. Keep only the first per unique normalized text (highest
+  // evidence_score first because of ORDER BY above).
+  return dedupeClaims(claims);
 }
 
 export async function getClaimBySlugDb(slug: string): Promise<Claim | undefined> {
@@ -90,7 +121,7 @@ export async function getTrendingClaimsDb(limit = 6): Promise<Claim[]> {
     .limit(limit);
 
   if (error || !data) return [];
-  return data.map(rowToClaim);
+  return dedupeClaims(data.map(rowToClaim));
 }
 
 export async function getLatestClaimsDb(limit = 6): Promise<Claim[]> {
@@ -108,12 +139,13 @@ export async function getLatestClaimsDb(limit = 6): Promise<Claim[]> {
     .limit(limit);
 
   if (error || !data) return [];
-  return data.map(rowToClaim);
+  return dedupeClaims(data.map(rowToClaim));
 }
 
 // Recently added, ranked by evidence — surfaces the "top" claims among the
 // newest entries (Module: homepage "Fresh Evidence" section).
 export async function getNewClaimsDb(limit = 6, recentPool = 20): Promise<Claim[]> {
+  // getAllClaimsDb() already dedupes — just rank from there.
   const claims = await getAllClaimsDb();
 
   // Most recently created first, then rank the freshest pool by evidence score
@@ -403,13 +435,13 @@ export async function getStudyByPmidDb(pmid: string): Promise<Study | undefined>
 export async function searchClaimsDb(query: string): Promise<Claim[]> {
   const lower = query.toLowerCase();
   if (!isDbMode()) {
-    return claimsData.filter(
+    return dedupeClaims(claimsData.filter(
       (c) =>
         c.text.toLowerCase().includes(lower) ||
         c.summary.toLowerCase().includes(lower) ||
         c.keywords.some((k) => k.toLowerCase().includes(lower)) ||
         c.category.toLowerCase().includes(lower)
-    );
+    ));
   }
 
   const supabase = getSupabase()!;
@@ -433,8 +465,8 @@ export async function searchClaimsDb(query: string): Promise<Claim[]> {
   const byText = data.map(rowToClaim);
   const matchedSlugs = new Set(byText.map((c) => c.slug));
 
-  // If we already have results or the query is very short, return as-is
-  if (byText.length >= 5 || query.length < 3) return byText;
+  // If we already have results or the query is very short, return deduped
+  if (byText.length >= 5 || query.length < 3) return dedupeClaims(byText);
 
   // For short result sets with longer queries, try fetching all and filtering by keyword
   const { data: allData } = await supabase
@@ -458,7 +490,7 @@ export async function searchClaimsDb(query: string): Promise<Claim[]> {
     .slice(0, 50)
     .map(rowToClaim);
 
-  return [...byText, ...extra];
+  return dedupeClaims([...byText, ...extra]);
 }
 
 // ============================================================

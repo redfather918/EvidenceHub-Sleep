@@ -5,6 +5,7 @@
 import type { PubMedPaper, ExtractedClaim, ClaimMatchResult } from "./types";
 import { pipelineConfig, compoundTopicMap, categoryMap } from "./config";
 import { getAllClaims } from "@/lib/data";
+import { getAllClaimsDb } from "@/lib/db";
 import type { Claim } from "@/lib/types";
 
 // ============================================================
@@ -253,6 +254,32 @@ function normalizeExtractedClaim(parsed: Record<string, unknown>, paper: PubMedP
  */
 export function findSimilarClaim(extractedClaim: ExtractedClaim): ClaimMatchResult {
   const existingClaims = getAllClaims();
+  const threshold = pipelineConfig.dedup.similarityThreshold;
+
+  let bestMatch: ClaimMatchResult = { matched: false, similarity: 0 };
+
+  for (const existing of existingClaims) {
+    const similarity = calculateSimilarity(extractedClaim, existing);
+
+    if (similarity > bestMatch.similarity) {
+      bestMatch = {
+        matched: similarity >= threshold,
+        existingSlug: similarity >= threshold ? existing.slug : undefined,
+        similarity,
+      };
+    }
+  }
+
+  return bestMatch;
+}
+
+/**
+ * DB-aware version of findSimilarClaim — reads from Supabase (production)
+ * instead of the static seed array. This is what jobAiParse should call
+ * to prevent duplicate claims with different slugs but similar text.
+ */
+export async function findSimilarClaimDb(extractedClaim: ExtractedClaim): Promise<ClaimMatchResult> {
+  const existingClaims = await getAllClaimsDb();
   const threshold = pipelineConfig.dedup.similarityThreshold;
 
   let bestMatch: ClaimMatchResult = { matched: false, similarity: 0 };

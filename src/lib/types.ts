@@ -418,3 +418,41 @@ export interface ApiUsageSummary {
   averageResponseTime: number;
   topEndpoints: { endpoint: string; count: number }[];
 }
+
+// ============================================================
+// Evidence Graph (Module 4) — node/edge shapes
+// ============================================================
+
+export type GraphNodeType = "topic" | "claim" | "study" | "outcome" | "intervention";
+export type GraphRelation =
+  | "supports"
+  | "contradicts"
+  | "related_to"
+  | "studied_by"
+  | "belongs_to";
+
+export interface GraphNode {
+  id: string; // global unique, e.g. "claim:glycine-sleep-latency"
+  type: GraphNodeType;
+  label: string;
+  url: string;
+  weight: number; // node size driver (evidenceScore / study count / claim count)
+  metadata?: Record<string, unknown>;
+}
+
+export interface GraphEdge {
+  from: string; // node id
+  to: string; // node id
+  relation: GraphRelation;
+  weight: number; // 0–1 or 1–5
+}
+
+export interface GraphResponse {
+  center?: string;
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  _links?: {
+    self: string;
+    [key: string]: string;
+  };
+}

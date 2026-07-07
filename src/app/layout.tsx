@@ -131,6 +131,9 @@ export default function RootLayout({
               <Link href="/claims" className="text-gray-600 hover:text-brand-700">
                 Claims
               </Link>
+              <Link href="/graph" className="text-gray-600 hover:text-brand-700">
+                Graph
+              </Link>
               <a href="/api-docs" className="text-gray-600 hover:text-brand-700">
                 API
               </a>

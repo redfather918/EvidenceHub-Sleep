@@ -193,15 +193,26 @@ export default async function HomePage({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {topics.map((topic) => {
             const color = TOPIC_COLORS[topic.slug] || "bg-gray-100 text-gray-700 border-gray-300";
+            // Extract background color for the category badge
+            const bgClass = color.split(" ")[0]; // e.g. "bg-blue-100"
+            const textClass = color.split(" ")[1]; // e.g. "text-blue-700"
             return (
               <Link
                 key={topic.id}
                 href={`/topics/${topic.slug}`}
-                className={`rounded-lg border p-4 hover:shadow-md transition-all text-center ${color}`}
+                className={`rounded-lg border p-4 hover:shadow-md transition-all text-center bg-white border-gray-200`}
               >
-                <div className="text-2xl mb-1">{topic.icon || "🔬"}</div>
-                <div className="font-semibold">{topic.name}</div>
-                <div className="text-xs opacity-70 mt-1">{topic.claimCount} claims</div>
+                {/* Category badge — small, muted, distinct from title */}
+                {topic.icon && topic.icon !== "🔬" && (
+                  <div className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wider ${bgClass} ${textClass} mb-2`}>
+                    {topic.icon}
+                  </div>
+                )}
+                {!topic.icon && (
+                  <div className="text-2xl mb-1">🔬</div>
+                )}
+                <div className="font-bold text-gray-900 text-base leading-tight">{topic.name}</div>
+                <div className="text-xs text-gray-400 mt-1.5">{topic.claimCount} claims</div>
               </Link>
             );
           })}

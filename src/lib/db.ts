@@ -10,6 +10,9 @@ import type {
   DoseMapping,
   EvidenceApiResponse,
   FAQItem,
+  GraphEdge,
+  GraphNode,
+  GraphResponse,
   PopulationFit,
   Study,
   Topic,
@@ -530,8 +533,184 @@ export async function exploreClaimsDb(params: ExploreParams = {}): Promise<Explo
 }
 
 // ============================================================
-// Write operations (pipeline → database)
+// Evidence Graph (Module 4)
+// Derives nodes/edges from existing claims/studies/topics on the fly.
+// No dedicated graph_edges table required for the MVP — relationships
+// are reconstructed from claims.topicSlug, claims.relatedSlugs, and
+// the claim_study_map join.
 // ============================================================
+
+// Map Supabase study row id → study object (DB mode only needs this for linking)
+async function getClaimStudyPairs(): Promise<{ claimSlug: string; studyId: string }[]> {
+  if (!isDbMode()) {
+    const pairs: { claimSlug: string; studyId: string }[] = [];
+    for (const [slug, ids] of Object.entries(claimStudies)) {
+      for (const id of ids) pairs.push({ claimSlug: slug, studyId: id });
+    }
+    return pairs;
+  }
+
+  const supabase = getSupabase()!;
+  const { data } = await supabase.from("claim_study_map").select("claim_id, study_id");
+  if (!data || data.length === 0) return [];
+
+  const claims = await getAllClaimsDb();
+  const idToSlug = new Map(claims.map((c) => [c.id, c.slug]));
+  return data
+    .map((r) => ({ claimSlug: idToSlug.get(String(r.claim_id)) || "", studyId: String(r.study_id) }))
+    .filter((p) => p.claimSlug);
+}
+
+export async function getGraphDb(entity: string, depth = 2): Promise<GraphResponse> {
+  const [claims, topics, studies, pairs] = await Promise.all([
+    getAllClaimsDb(),
+    getAllTopicsDb(),
+    getAllStudiesDb(),
+    getClaimStudyPairs(),
+  ]);
+
+  const nodes = new Map<string, GraphNode>();
+  const edges: GraphEdge[] = [];
+
+  // --- Topics ---
+  for (const t of topics) {
+    nodes.set(`topic:${t.slug}`, {
+      id: `topic:${t.slug}`,
+      type: "topic",
+      label: t.name,
+      url: `/topics/${t.slug}`,
+      weight: t.claimCount || 1,
+    });
+  }
+
+  // --- Claims + belongs_to + related_to edges ---
+  for (const c of claims) {
+    nodes.set(`claim:${c.slug}`, {
+      id: `claim:${c.slug}`,
+      type: "claim",
+      label: c.text,
+      url: `/claim/${c.slug}`,
+      weight: c.evidenceScore,
+      metadata: { score: c.evidenceScore, confidence: c.confidence, rcts: c.rctCount },
+    });
+    if (c.topicSlug) {
+      edges.push({ from: `claim:${c.slug}`, to: `topic:${c.topicSlug}`, relation: "belongs_to", weight: 1 });
+    }
+    for (const rel of c.relatedSlugs) {
+      if (nodes.has(`claim:${rel}`) || claims.some((x) => x.slug === rel)) {
+        edges.push({ from: `claim:${c.slug}`, to: `claim:${rel}`, relation: "related_to", weight: 0.8 });
+      }
+    }
+  }
+
+  // --- Studies + studied_by edges ---
+  const studyMap = new Map(studies.map((s) => [s.id, s]));
+  for (const { claimSlug, studyId } of pairs) {
+    const study = studyMap.get(studyId);
+    if (!study) continue;
+    const sid = `study:${study.pmid || study.id}`;
+    if (!nodes.has(sid)) {
+      nodes.set(sid, {
+        id: sid,
+        type: "study",
+        label: study.title,
+        url: study.pmid
+          ? `https://pubmed.ncbi.nlm.nih.gov/${study.pmid}/`
+          : study.url || "#",
+        weight: study.strength || 1,
+        metadata: { year: study.year, journal: study.journal, studyType: study.studyType },
+      });
+    }
+    edges.push({ from: `claim:${claimSlug}`, to: sid, relation: "studied_by", weight: 1 });
+  }
+
+  // --- Resolve center node ---
+  const centerId = resolveCenter(entity, nodes);
+  if (!centerId) {
+    return { center: undefined, nodes: [], edges: [], _links: { self: `/api/graph/${entity}` } };
+  }
+
+  // --- BFS from center up to `depth` hops ---
+  const subgraph = bfsSubgraph(centerId, edges, depth, 250);
+  const subNodes = subgraph.nodeIds.map((id) => nodes.get(id)!).filter(Boolean);
+
+  return {
+    center: centerId,
+    nodes: subNodes,
+    edges: subgraph.edges,
+    _links: { self: `/api/graph/${entity}?depth=${depth}` },
+  };
+}
+
+function resolveCenter(entity: string, nodes: Map<string, GraphNode>): string | undefined {
+  const e = entity.trim().toLowerCase();
+  if (!e) return undefined;
+
+  // Exact id match
+  if (nodes.has(e)) return e;
+
+  // Prefix match: "claim:slug", "topic:slug", "study:pmid"
+  const prefixed = `:${e}`;
+  for (const id of nodes.keys()) {
+    if (id.endsWith(prefixed)) return id;
+  }
+
+  // Slug/label fuzzy match
+  let best: string | undefined;
+  let bestScore = 0;
+  for (const node of nodes.values()) {
+    const slugPart = node.id.split(":")[1] || "";
+    const label = node.label.toLowerCase();
+    if (slugPart === e) return node.id;
+    if (label === e) return node.id;
+    if (label.includes(e) || e.includes(slugPart)) {
+      const score = e.length / Math.max(label.length, 1);
+      if (score > bestScore) {
+        bestScore = score;
+        best = node.id;
+      }
+    }
+  }
+  return best;
+}
+
+function bfsSubgraph(
+  centerId: string,
+  edges: GraphEdge[],
+  depth: number,
+  maxNodes: number
+): { nodeIds: string[]; edges: GraphEdge[] } {
+  // Build adjacency (undirected for traversal)
+  const adj = new Map<string, string[]>();
+  for (const e of edges) {
+    if (!adj.has(e.from)) adj.set(e.from, []);
+    adj.get(e.from)!.push(e.to);
+    if (!adj.has(e.to)) adj.set(e.to, []);
+    adj.get(e.to)!.push(e.from);
+  }
+
+  const visited = new Set<string>([centerId]);
+  let frontier = [centerId];
+
+  for (let d = 0; d < depth; d++) {
+    const next: string[] = [];
+    for (const node of frontier) {
+      for (const neighbor of adj.get(node) || []) {
+        if (!visited.has(neighbor)) {
+          visited.add(neighbor);
+          next.push(neighbor);
+        }
+      }
+    }
+    frontier = next;
+    if (visited.size >= maxNodes) break;
+  }
+
+  // Collect edges where both endpoints are in visited
+  const resultEdges = edges.filter((e) => visited.has(e.from) && visited.has(e.to));
+
+  return { nodeIds: Array.from(visited), edges: resultEdges };
+}
 
 export async function upsertStudyDb(study: Partial<Study> & { pmid?: string }): Promise<string | null> {
   if (!isDbMode()) {

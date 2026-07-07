@@ -528,6 +528,52 @@ GET /api/search?q={query}&limit={limit}
 }
 ```
 
+#### 6.1.4 Explorer API
+
+```
+GET /api/explore?topic={slug}&category={cat}&studyType={type}&sort={sort}&q={q}&page={n}&pageSize={n}
+```
+
+筛选 / 排序 / 分页的 Claim 列表端点。**首页 Evidence Explorer 区块与此外部 API 共用同一底层函数 `exploreClaimsDb()`**（`src/lib/db.ts`），保证行为一致。
+
+| 参数 | 类型 | 默认 | 说明 |
+|---|---|---|---|
+| topic | string | — | Topic slug 过滤（claim.topicSlug） |
+| category | string | — | Category 过滤（数据驱动，来自 claims 表） |
+| studyType | enum | — | `rct`(rctCount>0) / `meta`(metaCount>0) / `observational` / `animal` |
+| sort | enum | `evidence` | `evidence` / `newest` / `updated` / `rct` |
+| q | string | — | 关键词（text/summary/keywords/category） |
+| page | int | 1 | 分页页码 |
+| pageSize | int | 12 | 每页条数（最大 100） |
+
+**响应 (200):**
+```json
+{
+  "total": 33,
+  "page": 1,
+  "pageSize": 2,
+  "items": [
+    {
+      "slug": "melatonin-sleep-latency",
+      "text": "Melatonin reduces sleep onset latency…",
+      "category": "Hormones",
+      "evidenceScore": 95,
+      "confidence": "high",
+      "rctCount": 19,
+      "metaCount": 1,
+      "topic": "melatonin",
+      "url": "https://sleep.p1web.site/claim/melatonin-sleep-latency",
+      "lastUpdated": "2026-06-20T00:00:00.000Z"
+    }
+  ],
+  "_links": {
+    "self": "/api/explore?category=Hormones&page=1",
+    "next": "/api/explore?category=Hormones&page=2",
+    "prev": null
+  }
+}
+```
+
 ### 6.2 Cron API（内部）
 
 Cron API 由 GitHub Actions 定时调用，使用 `CRON_SECRET` 鉴权（`src/lib/cron-auth.ts`）。
@@ -721,6 +767,34 @@ jobs:
 ### 9.3 StarRating
 
 通用星级评分组件（0-5 星）。
+
+### 9.4 Explorer 组件（V3 新增）
+
+首页 Evidence Explorer 相关组件。
+
+#### 9.4.1 `FilterBar`（`src/components/explorer/FilterBar.tsx`）
+
+服务端组件，**URL 驱动**（无客户端 JS）。每个筛选项是一个 `Link`，点击后更新首页 query params 并触发服务端重渲染。
+
+- **Category** — 数据驱动，来自 `getAllClaimsDb()` 去重后的 category 列表
+- **Evidence (studyType)** — `rct` / `meta` / `observational` / `animal`
+- **Sort** — `Highest Evidence` / `Most Human Studies` / `Newest` / `Most Updated`
+
+Props：`{ current: FilterState, categories: string[] }`。`current` 为当前激活的筛选状态，用于高亮选中项；任意筛选变更会重置 `page` 分页。
+
+#### 9.4.2 首页 Explorer 区块（`src/app/page.tsx`）
+
+V3 将首页从「Latest Articles」重构为 Evidence Explorer，区块顺序：
+
+1. Hero 搜索框（action=`/search`）
+2. Stats 栏（Claims / Studies / Topics / Human RCTs）
+3. Browse by Topic（彩色卡片，按 `topic.slug` 映射 Tailwind 颜色）
+4. Trending Evidence（优先 high-confidence 的 top 6）
+5. **Evidence Explorer**（FilterBar + 筛选后的 ClaimCard 网格 + 分页）
+6. Newest Studies / Recently Updated（双栏）
+7. Mission + Quick links
+
+数据获取统一用 `Promise.all`：`getTrendingClaimsDb` / `getLatestClaimsDb` / `getAllTopicsDb` / `getHomeStats` / `getAllStudiesDb` / `getAllClaimsDb`（分类）/ `exploreClaimsDb`（筛选列表）。
 
 ---
 

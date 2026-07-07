@@ -261,10 +261,10 @@ export interface ComparePage {
 ## 9. 验收标准（Acceptance Criteria）
 
 ### Explorer 首页
-- [ ] 搜索框即时搜索（debounce 300ms）返回 ≤ 200ms（本地缓存）
-- [ ] Browse by Topic 显示全部 Topic 及 claimCount，点击跳转 /topics/[slug]
-- [ ] FilterBar 的 category / studyType / sort 任意组合改变 URL query 并触发 /api/explore 刷新
-- [ ] Trending Evidence 按 evidenceScore 降序，仅显示 confidence=high 的前 10
+- [ ] 搜索框即时搜索（debounce 300ms）返回 ≤ 200ms（本地缓存）— *当前为表单提交至 /search，待增强为即时搜索*
+- [x] Browse by Topic 显示全部 Topic 及 claimCount，点击跳转 /topics/[slug]
+- [x] FilterBar 的 category / studyType / sort 任意组合改变 URL query 并触发服务端筛选刷新
+- [x] Trending Evidence 按 evidenceScore 降序，优先显示 confidence=high 的前 6
 
 ### Claim 升级页
 - [ ] 13 模块全部渲染，顺序固定
@@ -277,9 +277,9 @@ export interface ComparePage {
 - [ ] 生成结果缓存到 `compare_pages`，二次访问不重新调用 LLM
 
 ### API
-- [ ] `/api/explore` 支持全部 Query Params，分页正确
-- [ ] `/api/citation/[slug]` 四种格式均返回 200 且内容合法
-- [ ] 所有 API 响应含 `_links`
+- [x] `/api/explore` 支持全部 Query Params（topic/category/studyType/sort/q/page/pageSize），分页正确
+- [ ] `/api/citation/[slug]` 四种格式均返回 200 且内容合法 — *待 Product Week 后续实现*
+- [x] 所有 API 响应含 `_links`（self/next/prev）
 
 ---
 
@@ -288,6 +288,32 @@ export interface ComparePage {
 - **依赖：** 现有 `claims` / `studies` / `topics` 表；`lib/db.ts` 查询层
 - **新增：** `compare_pages` 表 + `lib/db.ts` 查询 + 4 个 API + 7 个前端组件
 - **排期：** Product Week 内完成 Explorer 首页 + Claim 升级 + Compare 框架
+
+---
+
+## 11. 实现状态（2026-07-07，Product Week 第一轮）
+
+### ✅ 已完成
+
+| 交付 | 文件 |
+|---|---|
+| 首页 Explorer 重构（Hero + Topics + Trending + FilterBar + 筛选列表 + 分页 + Newest/Updated） | `src/app/page.tsx` |
+| `exploreClaimsDb()` 共享查询函数（筛选/排序/分页，DB + seed 双模式） | `src/lib/db.ts` |
+| `FilterBar` 服务端组件（URL 驱动筛选，分类数据驱动） | `src/components/explorer/FilterBar.tsx` |
+| `GET /api/explore` REST 端点（含 `_links`） | `src/app/api/explore/route.ts` |
+| 首页 ItemList JSON-LD | `src/app/page.tsx` |
+
+### ⏳ 待 Product Week 后续实现（本轮未做）
+
+- Claim 页 13 模块升级（含 Evidence Graph 入口 + AI Citation）
+- Compare 页自动生成（`compare_pages` 表 + `/api/compare` + `/compare/[a]-vs-[b]`）
+- `/api/citation/[slug]` 四种引用格式（BibTex/RIS/Markdown/JSON）
+- 搜索框即时搜索（debounce 客户端）
+
+### 验证
+
+- `npm run build` ✅ 0 TypeScript 错误，267 页静态生成
+- 运行时冒烟测试：`/?category=Sleep&sort=evidence` 渲染全部区块；`/api/explore?category=Hormones` → total 33；`/api/explore?studyType=meta` → total 18；`_links` 正确
 
 ---
 

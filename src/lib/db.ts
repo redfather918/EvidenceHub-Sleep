@@ -421,6 +421,92 @@ export async function searchClaimsDb(query: string): Promise<Claim[]> {
 }
 
 // ============================================================
+// Explorer (filtered / sorted / paginated claim listing)
+// Shared by the homepage Explorer section and GET /api/explore.
+// ============================================================
+
+export type ExploreSort = "evidence" | "newest" | "updated" | "rct";
+export type ExploreStudyType = "rct" | "meta" | "observational" | "animal";
+
+export interface ExploreParams {
+  topic?: string;
+  category?: string;
+  studyType?: ExploreStudyType;
+  sort?: ExploreSort;
+  q?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface ExploreResult {
+  items: Claim[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export async function exploreClaimsDb(params: ExploreParams = {}): Promise<ExploreResult> {
+  const all = await getAllClaimsDb();
+  let items: Claim[] = [...all];
+
+  if (params.topic) {
+    items = items.filter((c) => c.topicSlug === params.topic);
+  }
+  if (params.category) {
+    items = items.filter((c) => c.category === params.category);
+  }
+  if (params.studyType) {
+    switch (params.studyType) {
+      case "rct":
+        items = items.filter((c) => c.rctCount > 0);
+        break;
+      case "meta":
+        items = items.filter((c) => c.metaCount > 0);
+        break;
+      case "observational":
+        items = items.filter((c) => c.studyCount > 0 && c.rctCount === 0);
+        break;
+      case "animal":
+        items = items.filter((c) => c.studyCount === 0);
+        break;
+    }
+  }
+  if (params.q) {
+    const q = params.q.toLowerCase();
+    items = items.filter(
+      (c) =>
+        c.text.toLowerCase().includes(q) ||
+        c.summary.toLowerCase().includes(q) ||
+        c.keywords.some((k) => k.toLowerCase().includes(q)) ||
+        c.category.toLowerCase().includes(q)
+    );
+  }
+
+  const sort = params.sort || "evidence";
+  items.sort((a, b) => {
+    switch (sort) {
+      case "evidence":
+        return b.evidenceScore - a.evidenceScore;
+      case "newest":
+      case "updated":
+        return new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime();
+      case "rct":
+        return b.rctCount - a.rctCount;
+      default:
+        return b.evidenceScore - a.evidenceScore;
+    }
+  });
+
+  const total = items.length;
+  const page = Math.max(1, params.page || 1);
+  const pageSize = Math.min(100, Math.max(1, params.pageSize || 12));
+  const start = (page - 1) * pageSize;
+  const paged = items.slice(start, start + pageSize);
+
+  return { items: paged, total, page, pageSize };
+}
+
+// ============================================================
 // Write operations (pipeline → database)
 // ============================================================
 

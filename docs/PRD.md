@@ -1,4 +1,21 @@
-# EvidenceHub Sleep — PRD v4.0
+# EvidenceHub — PRD 索引（Active Blueprint = V3）
+
+> ⚠️ **当前活跃蓝图：EvidenceHub V3（AI-Native Evidence Search Engine）**
+> 本周定义为 **Product Week**，停止零散功能，围绕以下四份工程可执行 PRD 做产品化重构。
+
+## V3 文档导航
+
+| 文档 | 范围 | 等级 |
+|---|---|---|
+| [PRD/V3-Overview.md](PRD/V3-Overview.md) | 总览、四模块架构、北极星、Roadmap | Master |
+| [PRD/V3-Explorer-PRD.md](PRD/V3-Explorer-PRD.md) | 首页 Explorer + Claim 升级 + Compare + /api/explore + AI 引用 | P0 |
+| [PRD/V3-Graph-PRD.md](PRD/V3-Graph-PRD.md) | 节点/边、graph_edges、布局、/api/graph | P1 |
+| [PRD/V3-Programmatic-SEO-PRD.md](PRD/V3-Programmatic-SEO-PRD.md) | Entity SEO、Schema.org、自动发布、内链 | 贯穿 |
+| [PRD/V3-Growth-Engine-PRD.md](PRD/V3-Growth-Engine-PRD.md) | GSC 监控、内容生产、外链、Affiliate、看板 | 贯穿 |
+
+---
+
+# EvidenceHub Sleep — PRD v4.0（历史参考，已被 V3 演进）
 
 > **A Self-Updating, AI-Native Scientific Evidence Graph for Sleep & Health**
 

@@ -9,7 +9,7 @@ import { getAllClaimsDb } from "@/lib/db";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://evidencehubsleep.com";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://sleep.p1web.site";
 
 export async function GET(req: NextRequest) {
   if (!verifyCronAuth(req)) {
@@ -40,6 +40,15 @@ export async function GET(req: NextRequest) {
       errors.push(`Google ping failed: ${err}`);
     }
 
+    // 3b. Ping Bing about sitemap update
+    try {
+      const bingPingUrl = `https://www.bing.com/webmaster/ping.aspx?sitemap=${encodeURIComponent(`${SITE_URL}/sitemap.xml`)}`;
+      const resp = await fetch(bingPingUrl, { method: "GET" });
+      actions.push(`Pinged Bing sitemap ping (HTTP ${resp.status})`);
+    } catch (err) {
+      errors.push(`Bing ping failed: ${err}`);
+    }
+
     // 4. Submit to IndexNow (Bing, Yandex) if key is configured
     const indexNowKey = process.env.INDEXNOW_KEY;
     if (indexNowKey) {
@@ -58,6 +67,7 @@ export async function GET(req: NextRequest) {
           body: JSON.stringify({
             host: new URL(SITE_URL).host,
             key: indexNowKey,
+            keyLocation: `${SITE_URL}/indexnow-key.txt`,
             urlList: urls.slice(0, 10000), // IndexNow limit
           }),
         });

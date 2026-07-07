@@ -305,7 +305,30 @@ export async function getAllTopicsDb(): Promise<Topic[]> {
   const { data, error } = await supabase.from("topics").select("*").order("name");
 
   if (error || !data) return topicsData;
-  return data.map(rowToTopic);
+
+  // Compute real claim counts from claims table (the cached claim_count column
+  // can become stale after bulk inserts / updates).
+  const topics = data.map(rowToTopic);
+
+  if (topics.length === 0) return topics;
+
+  const { data: countData } = await supabase
+    .from("claims")
+    .select("topic_id")
+    .not("topic_id", "is", null);
+
+  if (countData) {
+    const counts: Record<string, number> = {};
+    for (const row of countData) {
+      const tid = String(row.topic_id);
+      counts[tid] = (counts[tid] || 0) + 1;
+    }
+    for (const t of topics) {
+      t.claimCount = counts[t.id] || 0;
+    }
+  }
+
+  return topics;
 }
 
 export async function getTopicBySlugDb(slug: string): Promise<Topic | undefined> {

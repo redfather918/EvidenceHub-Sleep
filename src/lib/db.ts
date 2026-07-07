@@ -111,6 +111,21 @@ export async function getLatestClaimsDb(limit = 6): Promise<Claim[]> {
   return data.map(rowToClaim);
 }
 
+// Recently added, ranked by evidence — surfaces the "top" claims among the
+// newest entries (Module: homepage "Fresh Evidence" section).
+export async function getNewClaimsDb(limit = 6, recentPool = 20): Promise<Claim[]> {
+  const claims = await getAllClaimsDb();
+
+  // Most recently created first, then rank the freshest pool by evidence score
+  // so the section shows the highest-quality *newly added* claims.
+  const sortedByNew = [...claims].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+  const pool = sortedByNew.slice(0, recentPool);
+  pool.sort((a, b) => b.evidenceScore - a.evidenceScore);
+  return pool.slice(0, limit);
+}
+
 export async function getClaimsByTopicDb(topicSlug: string): Promise<Claim[]> {
   if (!isDbMode()) {
     return claimsData.filter((c) => c.topicSlug === topicSlug);

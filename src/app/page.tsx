@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   getTrendingClaimsDb,
   getLatestClaimsDb,
+  getNewClaimsDb,
   getAllTopicsDb,
   getAllStudiesDb,
   getAllClaimsDb,
@@ -61,9 +62,10 @@ export default async function HomePage({
     q: searchParams.q,
   };
 
-  const [trendingRaw, latestClaims, topics, stats, studies, allClaims, explore] = await Promise.all([
+  const [trendingRaw, latestClaims, newClaims, topics, stats, studies, allClaims, explore] = await Promise.all([
     getTrendingClaimsDb(12),
     getLatestClaimsDb(4),
+    getNewClaimsDb(6, 20),
     getAllTopicsDb(),
     getHomeStats(),
     getAllStudiesDb(),
@@ -229,6 +231,24 @@ export default async function HomePage({
         </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {trendingClaims.map((claim) => (
+            <ClaimCard key={claim.id} claim={claim} />
+          ))}
+        </div>
+      </section>
+
+      {/* Fresh Evidence — recently added, top-ranked */}
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Fresh Evidence</h2>
+            <p className="text-sm text-gray-500 mt-0.5">Recently added, highest-rated claims</p>
+          </div>
+          <Link href="/claims?sort=newest" className="text-sm text-brand-600 hover:underline">
+            View all &rarr;
+          </Link>
+        </div>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {newClaims.map((claim) => (
             <ClaimCard key={claim.id} claim={claim} />
           ))}
         </div>

@@ -5,7 +5,16 @@ import { getAllStudiesDb } from "@/lib/db";
 
 export const metadata = {
   title: "All Studies — Sleep Evidence Database",
-  description: "Browse all human studies on sleep interventions from PubMed and clinical trials.",
+  description: "Browse all human studies on sleep interventions from PubMed and clinical trials. RCTs, meta-analyses, and observational studies.",
+  alternates: {
+    canonical: "/studies",
+  },
+  openGraph: {
+    title: "All Studies — Sleep Evidence Database",
+    description: "Browse all human studies on sleep interventions from PubMed and clinical trials.",
+    url: "/studies",
+    type: "website",
+  },
 };
 
 export default async function StudiesPage({
@@ -22,8 +31,39 @@ export default async function StudiesPage({
 
   const title = filterType === "rct" ? "Human RCTs" : "All Studies";
 
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://sleep.p1web.site/" },
+      { "@type": "ListItem", position: 2, name: title, item: `https://sleep.p1web.site/studies${filterType ? "?studyType=" + filterType : ""}` },
+    ],
+  };
+
+  const itemListJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: `${title} — Sleep Evidence Database`,
+    description: `Browse ${studies.length} ${filterType ? "human " + filterType.toUpperCase() : ""}studies on sleep interventions from PubMed.`,
+    numberOfItems: studies.length,
+    itemListElement: studies.slice(0, 50).map((s, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: s.title,
+      url: s.pmid ? `https://pubmed.ncbi.nlm.nih.gov/${s.pmid}/` : undefined,
+    })).filter((item) => item.url),
+  };
+
   return (
     <div>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
+      <nav className="text-sm text-gray-400 mb-4">
+        <Link href="/" className="hover:text-brand-600">Home</Link>
+        {" / "}
+        <span className="text-gray-600">{title}</span>
+      </nav>
+
       <header className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">{title}</h1>
         <p className="text-gray-600">

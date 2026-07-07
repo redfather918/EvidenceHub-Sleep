@@ -6,7 +6,16 @@ import { ClaimCard } from "@/components/ClaimCard";
 
 export const metadata = {
   title: "Search — Sleep Evidence",
-  description: "Search evidence-based sleep claims and research.",
+  description: "Search evidence-based sleep claims and research. Find answers on glycine, magnesium, melatonin and more.",
+  alternates: {
+    canonical: "/search",
+  },
+  openGraph: {
+    title: "Search — Sleep Evidence Database",
+    description: "Search evidence-based sleep claims and research.",
+    url: "/search",
+    type: "website",
+  },
 };
 
 export default async function SearchPage({
@@ -17,8 +26,18 @@ export default async function SearchPage({
   const query = searchParams.q || "";
   const results = query ? await searchClaimsDb(query) : await getAllClaimsDb();
 
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://sleep.p1web.site/" },
+      { "@type": "ListItem", position: 2, name: "Search", item: "https://sleep.p1web.site/search" },
+    ],
+  };
+
   return (
     <div>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <header className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Search Evidence</h1>
         <form action="/search" className="flex gap-2 max-w-2xl">

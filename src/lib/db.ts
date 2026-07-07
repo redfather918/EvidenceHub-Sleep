@@ -372,14 +372,52 @@ export async function searchClaimsDb(query: string): Promise<Claim[]> {
   }
 
   const supabase = getSupabase()!;
+  // Use ilike on text + summary only; avoid keywords.cs which breaks on non-array columns.
+  // Also search topic_slug and category for broader coverage.
+  const pattern = `%${query}%`;
   const { data, error } = await supabase
     .from("claims")
     .select("*")
-    .or(`text.ilike.%${query}%,summary.ilike.%${query}%,keywords.cs.{${query}}`)
-    .limit(20);
+    .or(`text.ilike.${pattern},summary.ilike.${pattern},category.ilike.${pattern}`)
+    .order("evidence_score", { ascending: false })
+    .limit(100);
 
-  if (error || !data) return [];
-  return data.map(rowToClaim);
+  if (error) {
+    console.error("[DB] searchClaimsDb failed:", error.message);
+    return [];
+  }
+  if (!data || data.length === 0) return [];
+
+  // Client-side keyword match as fallback supplement
+  const byText = data.map(rowToClaim);
+  const matchedSlugs = new Set(byText.map((c) => c.slug));
+
+  // If we already have results or the query is very short, return as-is
+  if (byText.length >= 5 || query.length < 3) return byText;
+
+  // For short result sets with longer queries, try fetching all and filtering by keyword
+  const { data: allData } = await supabase
+    .from("claims")
+    .select("*, topic:topic_id(slug)")
+    .order("evidence_score", { ascending: false })
+    .limit(200);
+
+  if (!allData) return byText;
+
+  const extra = allData
+    .filter((row) => {
+      if (matchedSlugs.has(row.slug)) return false;
+      const kw = row.keywords;
+      if (Array.isArray(kw) && kw.some((k: string) => k.toLowerCase().includes(lower))) return true;
+      if (typeof kw === "string" && kw.toLowerCase().includes(lower)) return true;
+      const topic = (row.topic as { slug?: string } | undefined);
+      if (topic?.slug?.toLowerCase().includes(lower)) return true;
+      return false;
+    })
+    .slice(0, 50)
+    .map(rowToClaim);
+
+  return [...byText, ...extra];
 }
 
 // ============================================================

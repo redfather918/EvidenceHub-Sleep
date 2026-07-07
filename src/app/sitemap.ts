@@ -1,11 +1,11 @@
 // Sitemap — /sitemap.xml
 
 import { MetadataRoute } from "next";
-import { getAllClaims, getAllTopics } from "@/lib/data";
+import { getAllClaimsDb, getAllTopicsDb } from "@/lib/db";
 
 const SITE_URL = "https://sleep.p1web.site";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
     {
       url: SITE_URL,
@@ -39,14 +39,19 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
   ];
 
-  const claimPages: MetadataRoute.Sitemap = getAllClaims().map((claim) => ({
+  const [claims, topics] = await Promise.all([
+    getAllClaimsDb(),
+    getAllTopicsDb(),
+  ]);
+
+  const claimPages: MetadataRoute.Sitemap = claims.map((claim) => ({
     url: `${SITE_URL}/claim/${claim.slug}`,
-    lastModified: new Date(claim.lastUpdated),
+    lastModified: claim.lastUpdated ? new Date(claim.lastUpdated) : new Date(),
     changeFrequency: "weekly" as const,
     priority: 0.9,
   }));
 
-  const topicPages: MetadataRoute.Sitemap = getAllTopics().map((topic) => ({
+  const topicPages: MetadataRoute.Sitemap = topics.map((topic) => ({
     url: `${SITE_URL}/topics/${topic.slug}`,
     lastModified: new Date(),
     changeFrequency: "weekly" as const,

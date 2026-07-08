@@ -66,6 +66,8 @@ EvidenceHub
 
 任何新功能必须归属这 4 个模块之一，否则不做。
 
+> **注：** Module 5（Claim Article View）是 **Claim 模块的一个新视图**，不是第 5 个独立产品模块——它把已有 Claim 自动渲染成循证长文，不新增产品边界。
+
 ---
 
 ## 5. 四份子 PRD（本蓝图的工程可执行分解）
@@ -76,6 +78,7 @@ EvidenceHub
 | [V3-Graph-PRD.md](./V3-Graph-PRD.md) | 节点/边、graph_edges 表、布局算法、交互、/api/graph | 图数据模型、可视化方案、性能预算 |
 | [V3-Programmatic-SEO-PRD.md](./V3-Programmatic-SEO-PRD.md) | Entity SEO、页面类型、Schema.org、自动发布、内链 | Schema 清单、规模目标、抓取预算 |
 | [V3-Growth-Engine-PRD.md](./V3-Growth-Engine-PRD.md) | GSC 监控、内容生产引擎、外链、Affiliate、Newsletter、看板 | 增长 SOP、变现层级、指标看板 |
+| [V3-Article-PRD.md](./V3-Article-PRD.md) | **Module 5：Claim Article View**（Claim 模块的新视图）— 任意 Claim 自动渲染为循证长文 | 文章页、composeArticle、Article/FAQ JSON-LD |
 
 ---
 

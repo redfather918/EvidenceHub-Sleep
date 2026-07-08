@@ -81,7 +81,7 @@ export default async function ClaimPage({ params }: { params: { slug: string } }
         </div>
         <h1 className="text-3xl font-bold text-gray-900 mb-3">{claim.text}</h1>
         <p className="text-lg text-gray-600 leading-relaxed">{claim.summary}</p>
-        <div className="flex gap-4 mt-4 text-sm text-gray-400">
+        <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-gray-400">
           <span>Last updated: {new Date(claim.lastUpdated).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}</span>
           <span>{"\u2022"}</span>
           <span>{claim.rctCount} RCTs</span>
@@ -91,6 +91,10 @@ export default async function ClaimPage({ params }: { params: { slug: string } }
               <span>{claim.metaCount} Meta-analyses</span>
             </>
           )}
+          <span>{"\u2022"}</span>
+          <Link href={`/article/${claim.slug}`} className="text-brand-600 hover:underline font-medium">
+            📖 Read as article &rarr;
+          </Link>
         </div>
       </header>
 

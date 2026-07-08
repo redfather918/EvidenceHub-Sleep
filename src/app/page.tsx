@@ -109,6 +109,11 @@ export default async function HomePage({
 
   const totalPages = Math.ceil(explore.total / explore.pageSize);
 
+  // Featured Deep Dive: demo = a "sleep duration" claim; else top by score
+  const featured =
+    allClaims.find((c) => /sleep duration/i.test(c.text)) ||
+    [...allClaims].sort((a, b) => b.evidenceScore - a.evidenceScore)[0];
+
   // ItemList JSON-LD for the explorer results (SEO)
   const itemListJsonLd = {
     "@context": "https://schema.org",
@@ -183,6 +188,27 @@ export default async function HomePage({
           </Link>
         ))}
       </section>
+
+      {/* Featured Deep Dive (Module 5: Claim → Article) */}
+      {featured && (
+        <section className="rounded-xl bg-gradient-to-r from-brand-600 to-brand-800 text-white p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="min-w-0">
+            <div className="text-xs font-semibold uppercase tracking-wider text-brand-100 mb-1">
+              📖 Featured Deep Dive
+            </div>
+            <Link href={`/article/${featured.slug}`} className="text-xl font-bold hover:underline block">
+              {featured.text}
+            </Link>
+            <p className="text-sm text-brand-100 mt-1 line-clamp-2">{featured.summary}</p>
+          </div>
+          <Link
+            href={`/article/${featured.slug}`}
+            className="shrink-0 bg-white text-brand-700 px-5 py-2.5 rounded-lg font-medium hover:bg-brand-50 whitespace-nowrap"
+          >
+            Read article &rarr;
+          </Link>
+        </section>
+      )}
 
       {/* Browse by Topic */}
       <section>

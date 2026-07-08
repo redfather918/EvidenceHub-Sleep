@@ -2,9 +2,11 @@
 //
 // Run once per machine: `npm run emf:youtube-auth`
 //   1. reads YOUTUBE_CLIENT_ID / YOUTUBE_CLIENT_SECRET from .env
-//   2. opens the Google consent screen (loopback redirect on :8080–:8082)
-//   3. exchanges the returned code for tokens
-//   4. saves them to youtube-tokens.json and appends YOUTUBE_REFRESH_TOKEN to .env
+//   2. opens the Google consent screen (loopback redirect on 127.0.0.1:8080–8082)
+//   3. if the loopback callback is not received, falls back to: paste the full
+//      redirect URL from the browser's address bar (it contains ?code=...)
+//   4. exchanges the code for tokens
+//   5. saves them to youtube-tokens.json and appends YOUTUBE_REFRESH_TOKEN to .env
 //
 // After this, `npm run emf:publish` can upload non-interactively.
 //
@@ -13,9 +15,6 @@
 //   - OAuth consent screen → "External", add your Google account as test user
 //   - Credentials → OAuth client ID → type "Desktop app"
 //   - copy the Client ID + Secret into .env
-//
-// NOTE: Google deprecated urn:ietf:wg:oauth:2.0:oob (OOB) in 2022.
-// This script uses localhost loopback only (multiple ports for resilience).
 
 import "dotenv/config";
 import { writeFileSync, appendFileSync, existsSync } from "node:fs";
@@ -42,23 +41,45 @@ function buildConsentUrl(redirectUri: string, clientId: string): string {
   );
 }
 
+/** Read a line of input from the terminal. */
+function readLine(promptText: string): Promise<string> {
+  return new Promise((resolve) => {
+    process.stdin.resume();
+    process.stdout.write(promptText);
+    process.stdin.once("data", (d) => {
+      resolve(d.toString().trim());
+      process.stdin.pause();
+    });
+  });
+}
+
+/** Try to extract ?code from a URL the user pastes. */
+function extractCodeFromUrl(raw: string): string | null {
+  try {
+    const u = new URL(raw.trim());
+    // Accept both ?code=... and the #code=... (hash) variants.
+    const c = u.searchParams.get("code") ?? u.hash.match(/[?&]code=([^&]+)/)?.[1];
+    return c ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Try to bind a loopback HTTP server on one of the given ports, open the browser
- * to the consent URL, and wait up to 90s for Google to redirect back with ?code=.
+ * to the consent URL, and wait up to 70s for Google to redirect back with ?code=.
  * Returns the authorization code, or null if all ports fail or timeout.
  */
 function tryLoopback(ports: number[], clientId: string): Promise<string | null> {
   let currentPortIdx = 0;
-  let activeServer: ReturnType<typeof createServer> | null = null;
-
   return new Promise((resolve) => {
     function tryNextPort() {
       if (currentPortIdx >= ports.length) {
-        resolve(null); // all ports exhausted
+        resolve(null);
         return;
       }
       const port = ports[currentPortIdx];
-      const redirectUri = `http://localhost:${port}`;
+      const redirectUri = `http://127.0.0.1:${port}`;
       const consentUrl = buildConsentUrl(redirectUri, clientId);
 
       const server = createServer((req, res) => {
@@ -74,16 +95,13 @@ function tryLoopback(ports: number[], clientId: string): Promise<string | null> 
       });
 
       server.on("error", () => {
-        // Port in use — try next
         server.close();
         currentPortIdx++;
         tryNextPort();
       });
 
-      server.listen(port, () => {
-        activeServer = server;
-        const portStr = String(port);
-        console.log(`Local OAuth listener running on http://localhost:${portStr}`);
+      server.listen(port, "127.0.0.1", () => {
+        console.log(`Local OAuth listener running on http://127.0.0.1:${port}`);
         console.log("\nOpen this URL in your browser and authorize EvidenceHub:\n");
         console.log("  " + consentUrl + "\n");
         try {
@@ -97,12 +115,11 @@ function tryLoopback(ports: number[], clientId: string): Promise<string | null> 
           /* user copies URL manually */
         }
 
-        // Wait up to 90s for the callback.
         setTimeout(() => {
-          if (!server.listening) return; // already closed
+          if (!server.listening) return;
           server.close();
-          resolve(null); // timeout — treat same as failure so we don't hang
-        }, 90_000);
+          resolve(null);
+        }, 70_000);
       });
     }
 
@@ -120,42 +137,73 @@ async function main() {
     );
   }
 
-  const code = await tryLoopback(FALLBACK_PORTS, clientId);
+  // Try the loopback callback first.
+  const loopCode = await tryLoopback(FALLBACK_PORTS, clientId);
 
-  if (!code) {
-    die(
-      "Could not receive the OAuth callback.\n" +
-        "Possible fixes:\n" +
-        "  1. A firewall is blocking inbound connections to localhost.\n" +
-        "  2. Ports " + FALLBACK_PORTS.join(", ") + " are all occupied.\n" +
-        '  3. You did not click "Allow" in the browser within 90 seconds.\n' +
-        "\nTry closing other apps using those ports and re-running."
-    );
+  let code: string | null = loopCode;
+  let usedRedirect: string | undefined;
+
+  if (code) {
+    usedRedirect = `http://127.0.0.1:${FALLBACK_PORTS[0]}`;
+  } else {
+    // Fallback: ask the user to paste the full redirect URL from the browser
+    // address bar. After clicking "Allow", Google redirects the browser to
+    // http://127.0.0.1:8080?code=... — even if our local server is not
+    // reachable, the address bar still contains that URL with the code.
+    console.log("\n⚠ We could not receive the callback automatically.");
+    console.log("After clicking 'Allow' in the browser, copy the FULL address from");
+    console.log("the browser's URL bar (it looks like http://127.0.0.1:8080/?code=...)");
+    console.log("and paste it back here:\n");
+    const pasted = await readLine("Paste the redirect URL here: ");
+    code = extractCodeFromUrl(pasted);
+    if (!code) {
+      die("Could not find ?code= in what you pasted. Please re-run and try again.");
+    }
+    // The redirect_uri used in the token exchange must match the consent URL's.
+    // We don't know which port the browser used, so try them all.
+    usedRedirect = undefined;
   }
 
-  // Determine which port was used (from the active listener's port).
-  // We used the first successful bind, so reconstruct from the URL that worked.
-  const usedRedirectUri = `http://localhost:${FALLBACK_PORTS[0]}`;
-
   console.log("\nExchanging code for tokens ...");
-  const body = new URLSearchParams({
-    client_id: clientId,
-    client_secret: clientSecret,
-    code,
-    grant_type: "authorization_code",
-    redirect_uri: usedRedirectUri,
-  });
-  const resp = await fetch(TOKEN_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
-  if (!resp.ok) die(`Token exchange failed: ${resp.status} ${await resp.text()}`);
-  const tok = (await resp.json()) as {
-    access_token: string;
-    refresh_token: string;
-    expires_in: number;
+  const exchange = async (redirectUri: string) => {
+    const body = new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      code,
+      grant_type: "authorization_code",
+      redirect_uri: redirectUri,
+    });
+    const resp = await fetch(TOKEN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    });
+    return { resp, ok: resp.ok, text: await resp.text() };
   };
+
+  // Try each possible redirect URI for the token exchange.
+  const candidates =
+    usedRedirect != null
+      ? [usedRedirect]
+      : FALLBACK_PORTS.map((p) => `http://127.0.0.1:${p}`);
+
+  let tok: { access_token: string; refresh_token: string; expires_in: number } | null = null;
+  for (const uri of candidates) {
+    const { resp, ok, text } = await exchange(uri);
+    if (ok) {
+      tok = (await resp.json()) as {
+        access_token: string;
+        refresh_token: string;
+        expires_in: number;
+      };
+      break;
+    }
+    // If it's a redirect_uri mismatch, try the next candidate.
+    if (!/redirect_uri_mismatch/.test(text)) {
+      die(`Token exchange failed: ${resp.status} ${text}`);
+    }
+  }
+  if (!tok) die("Token exchange failed for all redirect URIs (redirect_uri_mismatch).");
   if (!tok.refresh_token) die("No refresh_token returned. Re-run with prompt=consent (already set).");
 
   const store = {

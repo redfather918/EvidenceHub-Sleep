@@ -165,7 +165,7 @@ ${inner}
 </svg>`;
 }
 
-function hookSvg(hook: string): string {
+function hookSvg(hook?: string): string {
   const lines = wrapText(hook || "Better sleep starts here.", 22);
   const startY = H / 2 - (lines.length - 1) * 44;
   const inner = `  <text text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="76" font-weight="700" fill="${WHITE}">
@@ -174,7 +174,7 @@ ${tspans(lines, W / 2, startY, 88)}
   return baseSvg(inner);
 }
 
-function productSvg(item: string): string {
+function productSvg(item?: string): string {
   const name = (item || "Sleep").charAt(0).toUpperCase() + (item || "Sleep").slice(1);
   const initial = name.charAt(0).toUpperCase();
   const inner = `
@@ -185,7 +185,7 @@ function productSvg(item: string): string {
   return baseSvg(inner);
 }
 
-function evidenceSvg(evidence: string): string {
+function evidenceSvg(evidence?: string): string {
   const body = evidence || "Backed by peer-reviewed research on sleep quality.";
   const lines = wrapText(body, 30);
   const startY = 720;

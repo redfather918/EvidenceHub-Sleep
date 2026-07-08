@@ -12,3 +12,4 @@ export * from "./video";
 export * from "./db";
 export * from "./generate";
 export * from "./job";
+export * from "./youtube";

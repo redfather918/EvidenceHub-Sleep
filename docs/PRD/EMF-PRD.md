@@ -247,7 +247,8 @@ US Female / Voice A / 1.05x
 | **Phase 1 — Plan Persistence** | `media_plan` 表(migration 00003) + Scheduler 接入(`job:emf`) + CLI(`emf:schedule`) | ✅ 已完成（持久化需在 Supabase SQL Editor 执行一次 00003 迁移） |
 | **Phase 2 — Script & Asset** | AI Script Generator（接 LLM，已验证 live）+ Asset Generator（Flux/PNG，key 缺失时降级为 spec） | ✅ 已完成 |
 | **Phase 3 — Video** | Video Generator（TTS 接 OpenAI key 时 live；ffmpeg 渲染生成 manifest，live+素材齐时出片） | ✅ 已完成 |
-| Phase 4 — Review & Publish | Review Queue 后台页 + Publish Queue + 平台 API | 待开始 |
+| **Phase 3.5 — YouTube Publish** | 批量上传 YouTube（OAuth 引导 + 可续传上传 + DB 落 publish_queue）；TikTok 待做 | ✅ 已完成（YouTube，TikTok 暂缓） |
+| Phase 4 — Review & Publish | **Review Queue 后台页暂缓**；Publish Queue + TikTok 等平台 API（接 Phase 3.5 上传器扩展） | 部分（上传器已就绪，Review 页暂缓） |
 | Phase 5 — Analytics & Viral | Analytics Collector + Viral Library + 反馈 Planner 自动优化 | 待开始 |
 
 **本轮交付（Phase 0）**：可离线运行、可单测的「大脑」——给定内容矩阵与种子池，

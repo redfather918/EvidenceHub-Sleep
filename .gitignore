@@ -41,3 +41,6 @@ next-env.d.ts
 # EMF generated assets & render output
 assets/
 output/
+
+# YouTube OAuth tokens (one-time, per machine)
+youtube-tokens.json

@@ -77,6 +77,15 @@ export async function loadScheduleDb(weekKey: string): Promise<PlannedItem[] | n
   return data.map(rowToItem);
 }
 
+/** Load a single planned item by its file_name (primary key). */
+export async function getPlanItemDb(fileName: string): Promise<PlannedItem | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data, error } = await sb.from("media_plan").select("*").eq("file_name", fileName).maybeSingle();
+  if (error || !data) return null;
+  return rowToItem(data as Record<string, any>);
+}
+
 /** Upsert generated assets for a plan item. */
 export async function upsertMediaAssetDb(mediaPlanId: string, assets: FluxResult[]): Promise<boolean> {
   const sb = getSupabase();
@@ -112,4 +121,24 @@ export async function upsertRenderJobDb(
     { onConflict: "media_plan_id" }
   );
   return !error;
+}
+
+/** Record a successful platform publish (publish_queue) + mark plan published. */
+export async function markPublishedDb(
+  fileName: string,
+  platform: string,
+  url: string
+): Promise<boolean> {
+  const sb = getSupabase();
+  if (!sb) return false;
+  const { error: qErr } = await sb.from("publish_queue").upsert(
+    { media_plan_id: fileName, platform, status: "posted", posted_at: new Date().toISOString(), url },
+    { onConflict: "media_plan_id,platform" }
+  );
+  if (qErr) return false;
+  const { error: pErr } = await sb
+    .from("media_plan")
+    .update({ status: "published", updated_at: new Date().toISOString() })
+    .eq("file_name", fileName);
+  return !pErr;
 }

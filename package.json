@@ -21,7 +21,9 @@
     "emf:plan": "tsx scripts/emf-plan.ts",
     "emf:schedule": "tsx scripts/emf-schedule.ts",
     "emf:generate": "tsx scripts/emf-generate.ts",
-    "emf:migrate": "tsx scripts/emf-migrate.ts"
+    "emf:migrate": "tsx scripts/emf-migrate.ts",
+    "emf:youtube-auth": "tsx scripts/emf-youtube-auth.ts",
+    "emf:publish": "tsx scripts/emf-publish.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.16.2",

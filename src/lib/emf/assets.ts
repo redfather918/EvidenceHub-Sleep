@@ -3,16 +3,13 @@
 // Builds the visual asset spec for a planned item (hook card, product PNG,
 // evidence card, stars, logo) with Flux prompts, and optionally calls a Flux
 // image endpoint when FLUX_API_KEY + FLUX_ENDPOINT are set and live mode is on.
-// Without those, it returns "spec" entries (offline-safe) so the rest of the
-// pipeline (TTS, video manifest) can still run.
 //
-// When Flux is not available, writePlaceholderAssets() materializes real
-// colored PNGs at the fallback paths via ffmpeg, so the video render still
-// produces a valid (placeholder) MP4 locally.
+// When Flux is not available, renderSvgCards() materializes professional
+// 1080x1920 info-card PNGs directly from SVG (no API key, no external cost)
+// via @resvg/resvg-js, so the video render still produces a valid MP4 locally.
 
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-import { mkdir, access } from "node:fs/promises";
+import { Resvg } from "@resvg/resvg-js";
+import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
 export type AssetType = "png" | "icon";
@@ -100,56 +97,166 @@ export async function generateAssetsWithFlux(
   return out;
 }
 
-/** Solid background colors used for offline placeholder stills (per slot). */
-const PLACEHOLDER_COLORS: Record<string, string> = {
-  hook_card: "0x12183A",
-  evidence_card: "0x1F2937",
-  stars: "0x3A2E05",
-  logo: "0x0E3B3B",
-};
+// ============================================================
+// Programmatic SVG info cards (free, key-less fallback)
+// ============================================================
+
+const W = 1080;
+const H = 1920;
+const GOLD = "#F5C451";
+const WHITE = "#FFFFFF";
+const MUTED = "#9AA4BF";
+const BG_TOP = "#0B1026";
+const BG_BOTTOM = "#12183A";
+
+export interface CardContext {
+  hook?: string;
+  item?: string;
+  evidence?: string;
+}
+
+function escapeXml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+/** Greedy word-wrap to a max character count per line. */
+function wrapText(text: string, maxChars: number): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let cur = "";
+  for (const w of words) {
+    if (!cur) cur = w;
+    else if ((cur + " " + w).length <= maxChars) cur += " " + w;
+    else {
+      lines.push(cur);
+      cur = w;
+    }
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+function tspans(lines: string[], x: number, startY: number, lineH: number): string {
+  return lines
+    .map(
+      (ln, i) =>
+        `    <tspan x="${x}" dy="${i === 0 ? 0 : lineH}">${escapeXml(ln)}</tspan>`
+    )
+    .join("\n");
+}
+
+function baseSvg(inner: string): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${BG_TOP}"/>
+      <stop offset="100%" stop-color="${BG_BOTTOM}"/>
+    </linearGradient>
+  </defs>
+  <rect width="${W}" height="${H}" fill="url(#bg)"/>
+  <rect x="80" y="150" width="120" height="8" rx="4" fill="${GOLD}"/>
+${inner}
+  <text x="${W / 2}" y="${H - 90}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="30" fill="${MUTED}" letter-spacing="2">EVIDENCEHUB · SLEEP SCIENCE</text>
+</svg>`;
+}
+
+function hookSvg(hook: string): string {
+  const lines = wrapText(hook || "Better sleep starts here.", 22);
+  const startY = H / 2 - (lines.length - 1) * 44;
+  const inner = `  <text text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="76" font-weight="700" fill="${WHITE}">
+${tspans(lines, W / 2, startY, 88)}
+  </text>`;
+  return baseSvg(inner);
+}
+
+function productSvg(item: string): string {
+  const name = (item || "Sleep").charAt(0).toUpperCase() + (item || "Sleep").slice(1);
+  const initial = name.charAt(0).toUpperCase();
+  const inner = `
+  <circle cx="${W / 2}" cy="780" r="190" fill="none" stroke="${GOLD}" stroke-width="6"/>
+  <text x="${W / 2}" y="820" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="200" font-weight="700" fill="${GOLD}">${escapeXml(initial)}</text>
+  <text x="${W / 2}" y="1060" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="72" font-weight="700" fill="${WHITE}">${escapeXml(name)}</text>
+  <text x="${W / 2}" y="1140" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="38" fill="${MUTED}">What the research says</text>`;
+  return baseSvg(inner);
+}
+
+function evidenceSvg(evidence: string): string {
+  const body = evidence || "Backed by peer-reviewed research on sleep quality.";
+  const lines = wrapText(body, 30);
+  const startY = 720;
+  const inner = `
+  <rect x="120" y="640" width="10" height="${Math.max(560, lines.length * 56 + 120)}" rx="5" fill="${GOLD}"/>
+  <text x="170" y="700" font-family="Arial, Helvetica, sans-serif" font-size="46" font-weight="700" fill="${GOLD}">What the evidence shows</text>
+  <text x="170" y="${startY}" font-family="Arial, Helvetica, sans-serif" font-size="44" fill="${WHITE}">
+${tspans(lines, 170, startY, 60)}
+  </text>`;
+  return baseSvg(inner);
+}
+
+function starsSvg(): string {
+  const inner = `
+  <text x="${W / 2}" y="900" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="150" fill="${GOLD}">&#9733; &#9733; &#9733; &#9733; &#9733;</text>
+  <text x="${W / 2}" y="1040" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="48" font-weight="700" fill="${WHITE}">Backed by research</text>
+  <text x="${W / 2}" y="1120" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="38" fill="${MUTED}">Not medical advice — consult a professional</text>`;
+  return baseSvg(inner);
+}
+
+function logoSvg(): string {
+  const inner = `
+  <rect x="${W - 360}" y="${H - 250}" width="280" height="90" rx="20" fill="#1B2244" stroke="${GOLD}" stroke-width="2"/>
+  <text x="${W - 220}" y="${H - 195}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="40" font-weight="700" fill="${WHITE}">EvidenceHub</text>`;
+  return baseSvg(inner);
+}
+
+function svgForLabel(label: string, ctx: CardContext): string {
+  if (label === "hook_card") return hookSvg(ctx.hook);
+  if (label.endsWith("_product")) return productSvg(ctx.item);
+  if (label === "evidence_card") return evidenceSvg(ctx.evidence);
+  if (label === "stars") return starsSvg();
+  if (label === "logo") return logoSvg();
+  return hookSvg(ctx.hook);
+}
 
 /**
- * Materialize real PNGs at each spec.fallback so the ffmpeg render has inputs
- * even when Flux is not configured. Existing files are left untouched (so a
- * previously downloaded Flux image is not overwritten). No-op if ffmpeg is
- * unavailable — the render step will then degrade to manifest mode.
+ * Materialize professional info-card PNGs at each spec.fallback so the ffmpeg
+ * render has inputs even when Flux is not configured. Contextual cards
+ * (hook / evidence / product) are always regenerated per item so each video
+ * shows the correct text; static cards (stars / logo) are overwritten too for
+ * simplicity. (When a real Flux image is downloaded, a different code path
+ * writes it and renderSvgCards is not called for that asset.)
+ *
+ * @returns number of PNGs written
  */
-export async function writePlaceholderAssets(
+export async function renderSvgCards(
   specs: AssetSpec[],
+  ctx: CardContext,
   outBase = process.cwd()
 ): Promise<number> {
   let written = 0;
-  try {
-    await promisify(execFile)("ffmpeg", ["-version"]);
-  } catch {
-    console.warn("  [Assets] ffmpeg not found — skipping placeholder generation");
-    return 0;
-  }
   for (const s of specs) {
     const full = path.resolve(outBase, s.fallback);
     try {
-      await access(full);
-      continue; // already exists (e.g. real Flux image)
-    } catch {
-      /* not present → create placeholder */
-    }
-    const color = PLACEHOLDER_COLORS[s.label] ?? "0x222831";
-    try {
+      const svg = svgForLabel(s.label, ctx);
+      const resvg = new Resvg(svg, {
+        fitTo: { mode: "width", value: W },
+        font: { loadSystemFonts: true, defaultFontFamily: "Arial" },
+      });
+      const png = resvg.render().asPng();
       await mkdir(path.dirname(full), { recursive: true });
-      await promisify(execFile)("ffmpeg", [
-        "-y",
-        "-f",
-        "lavfi",
-        "-i",
-        `color=c=${color}:s=1080x1920:d=1`,
-        "-frames:v",
-        "1",
-        full,
-      ]);
+      const fs = await import("node:fs/promises");
+      await fs.writeFile(full, png);
       written++;
     } catch (err) {
-      console.warn(`  [Assets] placeholder ${s.label} failed: ${String(err)}`);
+      console.warn(`  [Assets] SVG card ${s.label} failed: ${String(err)}`);
     }
   }
   return written;
 }
+
+// Backwards-compatible alias (legacy name used in older call sites).
+export const writePlaceholderAssets = renderSvgCards;

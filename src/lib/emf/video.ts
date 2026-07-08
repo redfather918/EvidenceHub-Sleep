@@ -47,23 +47,54 @@ function pickImage(label: string, assets: AssetSpec[]): string {
   }
 }
 
+/** Probe media duration (seconds) via ffprobe; returns null on failure. */
+async function getMediaDuration(filePath: string): Promise<number | null> {
+  try {
+    const out = await promisify(execFile)("ffprobe", [
+      "-v",
+      "error",
+      "-show_entries",
+      "format=duration",
+      "-of",
+      "default=noprint_wrappers=1:nokey=1",
+      filePath,
+    ]);
+    const d = parseFloat((out.stdout ?? "").toString().trim());
+    return Number.isFinite(d) && d > 0 ? d : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Quote a single arg for display only when it contains spaces. */
 function quoteForDisplay(a: string): string {
   return /\s/.test(a) ? `"${a}"` : a;
 }
 
-export function buildRenderManifest(
+export async function buildRenderManifest(
   draft: ScriptDraft,
   assets: AssetSpec[],
   tts: TtsResult,
   fileNameBase: string,
   outDir = "output/videos"
-): RenderManifest {
-  const segs: RenderSegment[] = DEFAULT_VIDEO_TEMPLATE.segments.map((seg) => ({
+): Promise<RenderManifest> {
+  const templateSegs = DEFAULT_VIDEO_TEMPLATE.segments;
+  const templateTotal = DEFAULT_VIDEO_TEMPLATE.totalSeconds;
+
+  // Drive the timeline from the narration so there is never a silent tail
+  // (and longer scripts naturally produce longer videos).
+  let totalDuration = templateTotal;
+  const audioDur = tts.audioPath ? await getMediaDuration(tts.audioPath) : null;
+  if (audioDur && audioDur > 0) {
+    totalDuration = audioDur;
+  }
+  const scale = totalDuration / templateTotal;
+
+  const segs: RenderSegment[] = templateSegs.map((seg) => ({
     label: seg.label,
     image: pickImage(seg.label, assets),
-    start: seg.start,
-    end: seg.end,
+    start: Math.round(seg.start * scale * 100) / 100,
+    end: Math.round(seg.end * scale * 100) / 100,
   }));
   const n = segs.length;
 
@@ -71,16 +102,16 @@ export function buildRenderManifest(
 
   // Video segment inputs (looped stills, each clipped to its segment length).
   for (const s of segs) {
-    args.push("-loop", "1", "-t", String(s.end - s.start), "-i", s.image);
+    args.push("-loop", "1", "-t", String(Math.max(0.1, s.end - s.start)), "-i", s.image);
   }
 
   // Audio: real TTS track when available, otherwise a silent lavfi track so
   // the output is valid for platforms that require an audio stream.
-  const hasAudio = Boolean(tts.audioPath);
+  const hasAudio = Boolean(tts.audioPath) && Boolean(audioDur);
   if (hasAudio) {
     args.push("-i", tts.audioPath as string);
   } else {
-    args.push("-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100:d=30");
+    args.push("-f", "lavfi", "-i", `anullsrc=channel_layout=stereo:sample_rate=44100:d=${templateTotal}`);
   }
   const audioInputIndex = n; // audio is the last input
 
@@ -94,9 +125,8 @@ export function buildRenderManifest(
 
   args.push("-filter_complex", filter);
   args.push("-map", "[vout]");
-  if (hasAudio || true) {
-    args.push("-map", `${audioInputIndex}:a`);
-  }
+  args.push("-map", `${audioInputIndex}:a`);
+  args.push("-shortest");
   args.push("-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-r", "30");
   args.push(path.join(outDir, `${fileNameBase}.mp4`));
 
@@ -104,7 +134,7 @@ export function buildRenderManifest(
 
   return {
     fileName: `${fileNameBase}.mp4`,
-    durationSec: DEFAULT_VIDEO_TEMPLATE.totalSeconds,
+    durationSec: totalDuration,
     audio: tts.audioPath,
     segments: segs,
     ffmpegArgs: args,

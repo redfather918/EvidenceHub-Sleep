@@ -7,8 +7,8 @@
 
 import type { Schedule, PlannedItem, ScriptDraft } from "./types";
 import { generateScriptWithLLM } from "./llm";
-import { buildAssetSpecs, generateAssetsWithFlux, writePlaceholderAssets, type FluxResult } from "./assets";
-import { synthesizeVoice } from "./tts";
+import { buildAssetSpecs, generateAssetsWithFlux, renderSvgCards, type FluxResult } from "./assets";
+import { synthesizeVoice, EDGE_VOICE_POOL } from "./tts";
 import { buildRenderManifest, renderVideoWithFfmpeg } from "./video";
 import { upsertScheduleDb, upsertMediaAssetDb, upsertRenderJobDb, isEmfDbReady } from "./db";
 
@@ -41,6 +41,10 @@ export async function generateMediaForSchedule(
   const packages: ProductionPackage[] = [];
 
   for (const item of items) {
+    const idx = items.indexOf(item);
+    // Rotate English Edge TTS voices so videos don't sound monotone.
+    const voiceId = EDGE_VOICE_POOL[idx % EDGE_VOICE_POOL.length];
+
     const script = await generateScriptWithLLM({
       item: item.item,
       category: item.category === "fresh" ? undefined : item.category,
@@ -52,17 +56,21 @@ export async function generateMediaForSchedule(
     const assetSpecs = buildAssetSpecs(item.item, item.templateCode);
     const assets = await generateAssetsWithFlux(assetSpecs, { live: opts.live });
 
-    // Materialize real PNGs so the render has inputs (Flux may be absent).
+    // Materialize professional SVG info-card PNGs (key-less, free).
     if (opts.live) {
-      const w = await writePlaceholderAssets(assetSpecs);
-      if (w > 0) console.log(`  [Assets] wrote ${w} placeholder still(s) for ${item.item}`);
+      const w = await renderSvgCards(
+        assetSpecs,
+        { hook: script.hook, item: item.item, evidence: script.body.slice(0, 2).join(" ") },
+        process.cwd()
+      );
+      if (w > 0) console.log(`  [Assets] rendered ${w} SVG card(s) for ${item.item}`);
     }
 
     const narration = [script.hook, ...script.body, script.ending].join(". ");
-    const tts = await synthesizeVoice(narration, script.voice, { live: opts.live, outDir: "output/audio" });
+    const tts = await synthesizeVoice(narration, script.voice, { live: opts.live, outDir: "output/audio", voiceId });
 
     const baseName = item.fileName.replace(/\.[^.]+$/, "");
-    const manifest = buildRenderManifest(script, assetSpecs, tts, baseName, "output/videos");
+    const manifest = await buildRenderManifest(script, assetSpecs, tts, baseName, "output/videos");
     const render = await renderVideoWithFfmpeg(manifest, "output/videos", Boolean(opts.live));
 
     const persisted = { mediaPlan: Boolean(opts.live && dbReady), mediaAsset: false, renderJob: false };

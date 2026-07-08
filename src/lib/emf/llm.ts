@@ -13,7 +13,7 @@ function buildScriptPrompt(input: ScriptInput): string {
   const c = input.claim;
   return [
     `You are a short-form health video scriptwriter for EvidenceHub.`,
-    `Write a ~30-second script for the "${input.template}" template about "${input.item}"` +
+    `Write a ~30-second spoken script for the "${input.template}" template about "${input.item}"` +
       `${input.category ? ` in the ${input.category} domain` : ""}.`,
     c?.summary ? `Known evidence: ${c.summary}` : "",
     c?.studyCount
@@ -21,7 +21,8 @@ function buildScriptPrompt(input: ScriptInput): string {
       : "",
     c?.evidenceScore != null ? `Evidence confidence: ${c.evidenceScore}/100.` : "",
     `Return STRICT JSON only: {"hook": string, "body": string[3-4], "ending": string}.`,
-    `Hook must be under 12 words. No emojis. No markdown.`,
+    `Hook must be under 12 words. Each body sentence 15-25 words, conversational, evidence-based, no jargon.`,
+    `Ending under 18 words with a soft call-to-action. No emojis. No markdown.`,
   ]
     .filter(Boolean)
     .join("\n");

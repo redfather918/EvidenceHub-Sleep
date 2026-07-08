@@ -72,12 +72,57 @@ async function synthesizeWithSapi(text: string, voiceId: string, outWav: string)
     `$s.SetOutputToWaveFile('${outWav}'); ` +
     `$s.SelectVoice('${voiceName}'); ` +
     `$s.Speak('${safe}'); ` +
+    `$s.SetOutputToNull(); ` +
     `$s.Dispose()`;
   const encoded = Buffer.from(ps, "utf16le").toString("base64");
   await promisify(execFile)(winPs, ["-NoProfile", "-EncodedCommand", encoded], {
     windowsHide: true,
+    timeout: 120_000, // guard against a hung synthesis blocking the whole batch
   });
   return true;
+}
+
+/** Probe WAV duration via ffprobe; returns null on failure. */
+async function probeWavDuration(filePath: string): Promise<number | null> {
+  try {
+    const out = await promisify(execFile)("ffprobe", [
+      "-v",
+      "error",
+      "-show_entries",
+      "format=duration",
+      "-of",
+      "default=noprint_wrappers=1:nokey=1",
+      filePath,
+    ]);
+    const d = parseFloat((out.stdout ?? "").toString().trim());
+    return Number.isFinite(d) && d > 0 ? d : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Validate that a SAPI-produced WAV is actually usable: non-trivial size,
+ * correct RIFF/WAVE header, and a positive duration. (Windows sometimes
+ * releases the file handle late, leaving a truncated/headerless wav that
+ * would make ffmpeg emit a corrupt mp4.)
+ */
+async function isWavValid(p: string): Promise<boolean> {
+  try {
+    const fs = await import("node:fs/promises");
+    const st = await fs.stat(p);
+    if (st.size <= 44) return false;
+    const fh = await fs.open(p, "r");
+    const head = Buffer.alloc(12);
+    await fh.read(head, 0, 12, 0);
+    await fh.close();
+    if (head.toString("ascii", 0, 4) !== "RIFF" || head.toString("ascii", 8, 12) !== "WAVE")
+      return false;
+    const d = await probeWavDuration(p);
+    return d !== null && d > 0;
+  } catch {
+    return false;
+  }
 }
 
 /** Convert a 1.0x-style speed to Edge TTS "+N%" / "-N%" rate string. */
@@ -122,11 +167,25 @@ export async function synthesizeVoice(
       try {
         const fs = await import("node:fs/promises");
         await fs.mkdir(outDir, { recursive: true });
-        const wavPath = path.resolve(outDir, `voice_${Date.now()}.wav`);
-        await synthesizeWithSapi(text, voiceId, wavPath);
-        const st = await fs.stat(wavPath);
-        if (st.size <= 44) throw new Error("SAPI produced empty wav (English voice missing?)");
-        return { text, voice, status: "rendered", audioPath: wavPath, voiceId };
+        let wavPath: string | null = null;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const candidate = path.resolve(outDir, `voice_${Date.now()}_a${attempt}.wav`);
+          try {
+            await synthesizeWithSapi(text, voiceId, candidate);
+          } catch (e) {
+            console.warn(`  [TTS] SAPI attempt ${attempt + 1} error: ${String(e)}`);
+            continue;
+          }
+          if (await isWavValid(candidate)) {
+            wavPath = candidate;
+            break;
+          }
+          console.warn(`  [TTS] SAPI wav invalid (attempt ${attempt + 1}), retrying`);
+        }
+        if (wavPath) {
+          return { text, voice, status: "rendered", audioPath: wavPath, voiceId };
+        }
+        console.warn(`  [TTS] SAPI produced no usable wav (English voice missing?) -> silent`);
       } catch (e2) {
         console.warn(`  [TTS] SAPI fallback failed: ${String(e2)}`);
       }

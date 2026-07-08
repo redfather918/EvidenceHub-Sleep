@@ -9,7 +9,7 @@ import type { Schedule, PlannedItem, ScriptDraft } from "./types";
 import { generateScriptWithLLM } from "./llm";
 import { buildAssetSpecs, generateAssetsWithFlux, renderSvgCards, type FluxResult } from "./assets";
 import { synthesizeVoice, EDGE_VOICE_POOL } from "./tts";
-import { buildRenderManifest, renderVideoWithFfmpeg } from "./video";
+import { buildRenderManifest, renderVideoWithFfmpeg, isMp4Valid } from "./video";
 import { upsertScheduleDb, upsertMediaAssetDb, upsertRenderJobDb, isEmfDbReady } from "./db";
 
 export interface MediaGenOptions {
@@ -71,7 +71,17 @@ export async function generateMediaForSchedule(
 
     const baseName = item.fileName.replace(/\.[^.]+$/, "");
     const manifest = await buildRenderManifest(script, assetSpecs, tts, baseName, "output/videos");
-    const render = await renderVideoWithFfmpeg(manifest, "output/videos", Boolean(opts.live));
+    let render = await renderVideoWithFfmpeg(manifest, "output/videos", Boolean(opts.live));
+
+    // Safety net: if the audio-backed render failed/corrupted, retry once with
+    // a silent track so we never emit a broken mp4. (Mainly defends the local
+    // Windows SAPI fallback; on the server edge-tts audio is always valid.)
+    if (Boolean(opts.live) && render.status !== "rendered" && tts.audioPath) {
+      console.warn(`  [Video] retrying ${item.item} with silent audio`);
+      const silentTts = { ...tts, audioPath: undefined };
+      const silentManifest = await buildRenderManifest(script, assetSpecs, silentTts, baseName, "output/videos");
+      render = await renderVideoWithFfmpeg(silentManifest, "output/videos", true);
+    }
 
     const persisted = { mediaPlan: Boolean(opts.live && dbReady), mediaAsset: false, renderJob: false };
     if (opts.live && dbReady) {

@@ -170,9 +170,37 @@ export async function renderVideoWithFfmpeg(
     // Cross-platform: invoke ffmpeg directly with an argv array (no shell).
     await promisify(execFile)("ffmpeg", manifest.ffmpegArgs);
     const videoPath = path.join(outDir, manifest.fileName);
+    // Guard against a truncated/corrupt output (e.g. a bad audio input that
+    // ffmpeg still exits 0 on): verify the moov atom is present and there is
+    // a real video stream before declaring success.
+    if (!(await isMp4Valid(videoPath))) {
+      console.warn(`  [Video] output missing moov/streams; treating as failed`);
+      throw new Error("corrupt mp4 (no moov atom / no video stream)");
+    }
     return { status: "rendered", command: manifest.ffmpegCommand, videoPath };
   } catch (err) {
     console.warn(`  [Video] render failed: ${String(err)}`);
     return { status: "manifest", command: manifest.ffmpegCommand };
+  }
+}
+
+/** True if the file is a readable mp4 with a video stream and positive duration. */
+export async function isMp4Valid(filePath: string): Promise<boolean> {
+  try {
+    const out = await promisify(execFile)("ffprobe", [
+      "-v",
+      "error",
+      "-show_entries",
+      "stream=codec_type:format=duration",
+      "-of",
+      "json",
+      filePath,
+    ]);
+    const data = JSON.parse((out.stdout ?? "{}").toString());
+    const dur = parseFloat(data?.format?.duration);
+    const hasVideo = (data?.streams ?? []).some((s: any) => s.codec_type === "video");
+    return hasVideo && Number.isFinite(dur) && dur > 0;
+  } catch {
+    return false;
   }
 }

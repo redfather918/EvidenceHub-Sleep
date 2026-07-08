@@ -306,7 +306,7 @@ export async function findSimilarClaimDb(extractedClaim: ExtractedClaim): Promis
  * - Keyword overlap
  * - Topic/compound match
  */
-function calculateSimilarity(extracted: ExtractedClaim, existing: Claim): number {
+export function calculateSimilarity(extracted: ExtractedClaim, existing: Claim): number {
   // 1. Text similarity (Jaccard coefficient on word sets)
   const textSim = jaccardSimilarity(
     tokenize(extracted.text),

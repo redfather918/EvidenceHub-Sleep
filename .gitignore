@@ -37,3 +37,7 @@ server.log
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# EMF generated assets & render output
+assets/
+output/

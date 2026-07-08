@@ -5,6 +5,15 @@
 // image endpoint when FLUX_API_KEY + FLUX_ENDPOINT are set and live mode is on.
 // Without those, it returns "spec" entries (offline-safe) so the rest of the
 // pipeline (TTS, video manifest) can still run.
+//
+// When Flux is not available, writePlaceholderAssets() materializes real
+// colored PNGs at the fallback paths via ffmpeg, so the video render still
+// produces a valid (placeholder) MP4 locally.
+
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { mkdir, access } from "node:fs/promises";
+import path from "node:path";
 
 export type AssetType = "png" | "icon";
 
@@ -89,4 +98,58 @@ export async function generateAssetsWithFlux(
     }
   }
   return out;
+}
+
+/** Solid background colors used for offline placeholder stills (per slot). */
+const PLACEHOLDER_COLORS: Record<string, string> = {
+  hook_card: "0x12183A",
+  evidence_card: "0x1F2937",
+  stars: "0x3A2E05",
+  logo: "0x0E3B3B",
+};
+
+/**
+ * Materialize real PNGs at each spec.fallback so the ffmpeg render has inputs
+ * even when Flux is not configured. Existing files are left untouched (so a
+ * previously downloaded Flux image is not overwritten). No-op if ffmpeg is
+ * unavailable — the render step will then degrade to manifest mode.
+ */
+export async function writePlaceholderAssets(
+  specs: AssetSpec[],
+  outBase = process.cwd()
+): Promise<number> {
+  let written = 0;
+  try {
+    await promisify(execFile)("ffmpeg", ["-version"]);
+  } catch {
+    console.warn("  [Assets] ffmpeg not found — skipping placeholder generation");
+    return 0;
+  }
+  for (const s of specs) {
+    const full = path.resolve(outBase, s.fallback);
+    try {
+      await access(full);
+      continue; // already exists (e.g. real Flux image)
+    } catch {
+      /* not present → create placeholder */
+    }
+    const color = PLACEHOLDER_COLORS[s.label] ?? "0x222831";
+    try {
+      await mkdir(path.dirname(full), { recursive: true });
+      await promisify(execFile)("ffmpeg", [
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+        `color=c=${color}:s=1080x1920:d=1`,
+        "-frames:v",
+        "1",
+        full,
+      ]);
+      written++;
+    } catch (err) {
+      console.warn(`  [Assets] placeholder ${s.label} failed: ${String(err)}`);
+    }
+  }
+  return written;
 }

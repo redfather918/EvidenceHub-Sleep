@@ -7,7 +7,7 @@
 
 import type { Schedule, PlannedItem, ScriptDraft } from "./types";
 import { generateScriptWithLLM } from "./llm";
-import { buildAssetSpecs, generateAssetsWithFlux, type FluxResult } from "./assets";
+import { buildAssetSpecs, generateAssetsWithFlux, writePlaceholderAssets, type FluxResult } from "./assets";
 import { synthesizeVoice } from "./tts";
 import { buildRenderManifest, renderVideoWithFfmpeg } from "./video";
 import { upsertScheduleDb, upsertMediaAssetDb, upsertRenderJobDb, isEmfDbReady } from "./db";
@@ -51,6 +51,12 @@ export async function generateMediaForSchedule(
 
     const assetSpecs = buildAssetSpecs(item.item, item.templateCode);
     const assets = await generateAssetsWithFlux(assetSpecs, { live: opts.live });
+
+    // Materialize real PNGs so the render has inputs (Flux may be absent).
+    if (opts.live) {
+      const w = await writePlaceholderAssets(assetSpecs);
+      if (w > 0) console.log(`  [Assets] wrote ${w} placeholder still(s) for ${item.item}`);
+    }
 
     const narration = [script.hook, ...script.body, script.ending].join(". ");
     const tts = await synthesizeVoice(narration, script.voice, { live: opts.live, outDir: "output/audio" });

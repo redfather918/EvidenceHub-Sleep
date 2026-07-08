@@ -17,7 +17,11 @@
     "job:ai-parse": "tsx scripts/run-job.ts ai-parse",
     "job:update-claims": "tsx scripts/run-job.ts update-claims",
     "job:affiliate": "tsx scripts/run-job.ts affiliate",
-    "job:newsletter": "tsx scripts/run-job.ts newsletter"
+    "job:newsletter": "tsx scripts/run-job.ts newsletter",
+    "emf:plan": "tsx scripts/emf-plan.ts",
+    "emf:schedule": "tsx scripts/emf-schedule.ts",
+    "emf:generate": "tsx scripts/emf-generate.ts",
+    "emf:migrate": "tsx scripts/emf-migrate.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.16.2",

@@ -7,6 +7,7 @@
 //   npm run job:update-claims    # Job 3: Dedup and update claims
 //   npm run job:affiliate        # Job 6: Update affiliate prices
 //   npm run job:newsletter       # Job 7: Send weekly newsletter
+//   npm run job:emf              # EMF: generate + persist weekly media plan
 
 import "dotenv/config";
 
@@ -14,7 +15,7 @@ const jobName = process.argv[2];
 
 async function main() {
   if (!jobName) {
-    console.error("Usage: npm run job:<name> [fetch-papers|ai-parse|update-claims|affiliate|newsletter]");
+    console.error("Usage: npm run job:<name> [fetch-papers|ai-parse|update-claims|affiliate|newsletter|emf]");
     process.exit(1);
   }
 
@@ -49,9 +50,14 @@ async function main() {
         result = await jobSendNewsletter();
         break;
       }
+      case "emf": {
+        const { jobEmf } = await import("../src/lib/emf/job");
+        result = await jobEmf();
+        break;
+      }
       default:
         console.error(`Unknown job: ${jobName}`);
-        console.error("Available jobs: fetch-papers, ai-parse, update-claims, affiliate, newsletter");
+        console.error("Available jobs: fetch-papers, ai-parse, update-claims, affiliate, newsletter, emf");
         process.exit(1);
     }
 

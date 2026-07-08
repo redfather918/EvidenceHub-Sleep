@@ -50,6 +50,12 @@ export function buildAssetSpecs(item: string, templateCode: string): AssetSpec[]
       fallback: "assets/stars.png",
     },
     {
+      label: "summary_card",
+      type: "png",
+      prompt: `Closing takeaway card with the key message for a ${templateCode} sleep video about ${cap}`,
+      fallback: "assets/summary.png",
+    },
+    {
       label: "logo",
       type: "icon",
       prompt: `EvidenceHub logo bug, small, bottom-right`,
@@ -113,6 +119,7 @@ export interface CardContext {
   hook?: string;
   item?: string;
   evidence?: string;
+  ending?: string;
 }
 
 function escapeXml(s: string): string {
@@ -161,15 +168,15 @@ function baseSvg(inner: string): string {
   <rect width="${W}" height="${H}" fill="url(#bg)"/>
   <rect x="80" y="150" width="120" height="8" rx="4" fill="${GOLD}"/>
 ${inner}
-  <text x="${W / 2}" y="${H - 90}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="30" fill="${MUTED}" letter-spacing="2">EVIDENCEHUB · SLEEP SCIENCE</text>
+  <text x="${W / 2}" y="${H - 90}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="34" fill="${MUTED}" letter-spacing="2">EVIDENCEHUB · SLEEP SCIENCE</text>
 </svg>`;
 }
 
 function hookSvg(hook?: string): string {
-  const lines = wrapText(hook || "Better sleep starts here.", 22);
-  const startY = H / 2 - (lines.length - 1) * 44;
-  const inner = `  <text text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="76" font-weight="700" fill="${WHITE}">
-${tspans(lines, W / 2, startY, 88)}
+  const lines = wrapText(hook || "Better sleep starts here.", 20);
+  const startY = H / 2 - (lines.length - 1) * 52;
+  const inner = `  <text text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="88" font-weight="700" fill="${WHITE}">
+${tspans(lines, W / 2, startY, 100)}
   </text>`;
   return baseSvg(inner);
 }
@@ -178,38 +185,51 @@ function productSvg(item?: string): string {
   const name = (item || "Sleep").charAt(0).toUpperCase() + (item || "Sleep").slice(1);
   const initial = name.charAt(0).toUpperCase();
   const inner = `
-  <circle cx="${W / 2}" cy="780" r="190" fill="none" stroke="${GOLD}" stroke-width="6"/>
-  <text x="${W / 2}" y="820" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="200" font-weight="700" fill="${GOLD}">${escapeXml(initial)}</text>
-  <text x="${W / 2}" y="1060" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="72" font-weight="700" fill="${WHITE}">${escapeXml(name)}</text>
-  <text x="${W / 2}" y="1140" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="38" fill="${MUTED}">What the research says</text>`;
+  <circle cx="${W / 2}" cy="760" r="210" fill="none" stroke="${GOLD}" stroke-width="8"/>
+  <text x="${W / 2}" y="810" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="240" font-weight="700" fill="${GOLD}">${escapeXml(initial)}</text>
+  <text x="${W / 2}" y="1080" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="86" font-weight="700" fill="${WHITE}">${escapeXml(name)}</text>
+  <text x="${W / 2}" y="1160" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="44" fill="${MUTED}">What the research says</text>`;
   return baseSvg(inner);
 }
 
 function evidenceSvg(evidence?: string): string {
   const body = evidence || "Backed by peer-reviewed research on sleep quality.";
-  const lines = wrapText(body, 30);
+  const lines = wrapText(body, 26);
   const startY = 720;
   const inner = `
-  <rect x="120" y="640" width="10" height="${Math.max(560, lines.length * 56 + 120)}" rx="5" fill="${GOLD}"/>
-  <text x="170" y="700" font-family="Arial, Helvetica, sans-serif" font-size="46" font-weight="700" fill="${GOLD}">What the evidence shows</text>
-  <text x="170" y="${startY}" font-family="Arial, Helvetica, sans-serif" font-size="44" fill="${WHITE}">
-${tspans(lines, 170, startY, 60)}
+  <rect x="120" y="640" width="12" height="${Math.max(600, lines.length * 64 + 140)}" rx="6" fill="${GOLD}"/>
+  <text x="175" y="700" font-family="Arial, Helvetica, sans-serif" font-size="54" font-weight="700" fill="${GOLD}">What the evidence shows</text>
+  <text x="175" y="${startY}" font-family="Arial, Helvetica, sans-serif" font-size="52" fill="${WHITE}">
+${tspans(lines, 175, startY, 68)}
   </text>`;
   return baseSvg(inner);
 }
 
 function starsSvg(): string {
   const inner = `
-  <text x="${W / 2}" y="900" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="150" fill="${GOLD}">&#9733; &#9733; &#9733; &#9733; &#9733;</text>
-  <text x="${W / 2}" y="1040" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="48" font-weight="700" fill="${WHITE}">Backed by research</text>
-  <text x="${W / 2}" y="1120" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="38" fill="${MUTED}">Not medical advice — consult a professional</text>`;
+  <text x="${W / 2}" y="900" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="170" fill="${GOLD}">&#9733; &#9733; &#9733; &#9733; &#9733;</text>
+  <text x="${W / 2}" y="1060" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="56" font-weight="700" fill="${WHITE}">Backed by research</text>
+  <text x="${W / 2}" y="1140" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="42" fill="${MUTED}">Not medical advice — consult a professional</text>`;
   return baseSvg(inner);
 }
 
 function logoSvg(): string {
   const inner = `
-  <rect x="${W - 360}" y="${H - 250}" width="280" height="90" rx="20" fill="#1B2244" stroke="${GOLD}" stroke-width="2"/>
-  <text x="${W - 220}" y="${H - 195}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="40" font-weight="700" fill="${WHITE}">EvidenceHub</text>`;
+  <rect x="${W - 380}" y="${H - 260}" width="300" height="100" rx="22" fill="#1B2244" stroke="${GOLD}" stroke-width="2"/>
+  <text x="${W - 230}" y="${H - 200}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="46" font-weight="700" fill="${WHITE}">EvidenceHub</text>`;
+  return baseSvg(inner);
+}
+
+function summarySvg(ending?: string): string {
+  const body = ending || "Small changes, better sleep.";
+  const lines = wrapText(body, 26);
+  const startY = 760;
+  const inner = `
+  <rect x="120" y="660" width="10" height="${Math.max(520, lines.length * 64 + 120)}" rx="5" fill="${GOLD}"/>
+  <text x="170" y="720" font-family="Arial, Helvetica, sans-serif" font-size="46" font-weight="700" fill="${GOLD}">The takeaway</text>
+  <text x="170" y="${startY}" font-family="Arial, Helvetica, sans-serif" font-size="48" fill="${WHITE}">
+${tspans(lines, 170, startY, 64)}
+  </text>`;
   return baseSvg(inner);
 }
 
@@ -218,6 +238,7 @@ function svgForLabel(label: string, ctx: CardContext): string {
   if (label.endsWith("_product")) return productSvg(ctx.item);
   if (label === "evidence_card") return evidenceSvg(ctx.evidence);
   if (label === "stars") return starsSvg();
+  if (label === "summary_card") return summarySvg(ctx.ending);
   if (label === "logo") return logoSvg();
   return hookSvg(ctx.hook);
 }

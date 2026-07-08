@@ -10,6 +10,7 @@ import { generateScriptWithLLM } from "./llm";
 import { buildAssetSpecs, generateAssetsWithFlux, renderSvgCards, type FluxResult } from "./assets";
 import { synthesizeVoice, EDGE_VOICE_POOL } from "./tts";
 import { buildRenderManifest, renderVideoWithFfmpeg, isMp4Valid } from "./video";
+import { writeAssFile } from "./subtitles";
 import { upsertScheduleDb, upsertMediaAssetDb, upsertRenderJobDb, isEmfDbReady } from "./db";
 
 export interface MediaGenOptions {
@@ -60,7 +61,12 @@ export async function generateMediaForSchedule(
     if (opts.live) {
       const w = await renderSvgCards(
         assetSpecs,
-        { hook: script.hook, item: item.item, evidence: script.body.slice(0, 2).join(" ") },
+        {
+          hook: script.hook,
+          item: item.item,
+          evidence: script.body.slice(0, 2).join(" "),
+          ending: script.ending,
+        },
         process.cwd()
       );
       if (w > 0) console.log(`  [Assets] rendered ${w} SVG card(s) for ${item.item}`);
@@ -70,7 +76,22 @@ export async function generateMediaForSchedule(
     const tts = await synthesizeVoice(narration, script.voice, { live: opts.live, outDir: "output/audio", voiceId });
 
     const baseName = item.fileName.replace(/\.[^.]+$/, "");
-    const manifest = await buildRenderManifest(script, assetSpecs, tts, baseName, "output/videos");
+
+    // Generate SRT subtitles from script (time-aligned to audio duration).
+    let subtitlePath: string | null = null;
+    if (opts.live && tts.audioPath) {
+      try {
+        const { getMediaDuration } = await import("./video");
+        const audioDur = await getMediaDuration(tts.audioPath);
+        if (audioDur && audioDur > 0) {
+          subtitlePath = await writeAssFile(script, audioDur, baseName, "output/subtitles");
+        }
+      } catch (e) {
+        console.warn(`  [Subtitles] probe failed: ${String(e)}`);
+      }
+    }
+
+    const manifest = await buildRenderManifest(script, assetSpecs, tts, baseName, "output/videos", subtitlePath);
     let render = await renderVideoWithFfmpeg(manifest, "output/videos", Boolean(opts.live));
 
     // Safety net: if the audio-backed render failed/corrupted, retry once with
@@ -79,7 +100,7 @@ export async function generateMediaForSchedule(
     if (Boolean(opts.live) && render.status !== "rendered" && tts.audioPath) {
       console.warn(`  [Video] retrying ${item.item} with silent audio`);
       const silentTts = { ...tts, audioPath: undefined };
-      const silentManifest = await buildRenderManifest(script, assetSpecs, silentTts, baseName, "output/videos");
+      const silentManifest = await buildRenderManifest(script, assetSpecs, silentTts, baseName, "output/videos", subtitlePath);
       render = await renderVideoWithFfmpeg(silentManifest, "output/videos", true);
     }
 

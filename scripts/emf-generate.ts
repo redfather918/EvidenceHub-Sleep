@@ -28,6 +28,10 @@ async function main() {
   const live = process.argv.includes("--live");
   const limitArg = process.argv.find((a) => a.startsWith("--limit="))?.split("=")[1];
   const limit = limitArg ? Number(limitArg) : undefined;
+  const itemsArg = process.argv.find((a) => a.startsWith("--items="))?.split("=")[1];
+  const onlyItems = itemsArg ? itemsArg.split(",").map((s) => s.trim()) : undefined;
+  const excludeArg = process.argv.find((a) => a.startsWith("--exclude="))?.split("=")[1];
+  const excludeItems = excludeArg ? excludeArg.split(",").map((s) => s.trim()) : undefined;
 
   const schedule = generateSchedule({
     startDate: nextMonday(new Date()),
@@ -43,7 +47,7 @@ async function main() {
   );
   console.log(`Schedule: ${schedule.items.length} items; processing ${limit ?? schedule.items.length}\n`);
 
-  const pkgs = await generateMediaForSchedule(schedule, { live, limit });
+  const pkgs = await generateMediaForSchedule(schedule, { live, limit, onlyItems, excludeItems });
 
   for (const p of pkgs) {
     console.log(`\n● ${p.plan.fileName}  [${p.plan.dimension}]`);

@@ -164,8 +164,23 @@ function baseSvg(inner: string): string {
       <stop offset="0%" stop-color="${BG_TOP}"/>
       <stop offset="100%" stop-color="${BG_BOTTOM}"/>
     </linearGradient>
+    <!-- Subtle film-grain noise to break up solid-colour regions (anti-PPT-detection) -->
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch"/>
+      <feColorMatrix type="matrix" values="
+        1 0 0 0 0
+        0 1 0 0 0
+        0 0 1 0 0
+        0 0 0 0.035 0"/>
+    </filter>
+    <radialGradient id="vignette" cx="50%" cy="50%" r="72%">
+      <stop offset="50%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.35"/>
+    </radialGradient>
   </defs>
   <rect width="${W}" height="${H}" fill="url(#bg)"/>
+  <rect width="${W}" height="${H}" fill="transparent" filter="url(#grain)" opacity="0.55" style="mix-blend-mode:overlay;"/>
+  <rect width="${W}" height="${H}" fill="url(#vignette)"/>
   <rect x="80" y="150" width="120" height="8" rx="4" fill="${GOLD}"/>
 ${inner}
   <text x="${W / 2}" y="${H - 90}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="34" fill="${MUTED}" letter-spacing="2">EVIDENCEHUB · SLEEP SCIENCE</text>
@@ -194,13 +209,16 @@ function productSvg(item?: string): string {
 
 function evidenceSvg(evidence?: string): string {
   const body = evidence || "Backed by peer-reviewed research on sleep quality.";
-  const lines = wrapText(body, 26);
-  const startY = 720;
+  const lines = wrapText(body, 30);
+  const titleY = 660;
+  const startY = 740;
+  const lineH = 74;
+  const contentH = lines.length * lineH + 60;
   const inner = `
-  <rect x="120" y="640" width="12" height="${Math.max(600, lines.length * 64 + 140)}" rx="6" fill="${GOLD}"/>
-  <text x="175" y="700" font-family="Arial, Helvetica, sans-serif" font-size="54" font-weight="700" fill="${GOLD}">What the evidence shows</text>
-  <text x="175" y="${startY}" font-family="Arial, Helvetica, sans-serif" font-size="52" fill="${WHITE}">
-${tspans(lines, 175, startY, 68)}
+  <rect x="120" y="${titleY - 50}" width="10" height="${Math.max(500, contentH + 100)}" rx="5" fill="${GOLD}"/>
+  <text x="175" y="${titleY}" font-family="Arial, Helvetica, sans-serif" font-size="44" font-weight="700" fill="${GOLD}">What the evidence shows</text>
+  <text x="175" y="${startY}" font-family="Arial, Helvetica, sans-serif" font-size="42" fill="${WHITE}" letter-spacing="0.5">
+${tspans(lines, 175, startY, lineH)}
   </text>`;
   return baseSvg(inner);
 }
@@ -222,13 +240,16 @@ function logoSvg(): string {
 
 function summarySvg(ending?: string): string {
   const body = ending || "Small changes, better sleep.";
-  const lines = wrapText(body, 26);
-  const startY = 760;
+  const lines = wrapText(body, 30);
+  const titleY = 700;
+  const startY = 780;
+  const lineH = 72;
+  const contentH = lines.length * lineH + 60;
   const inner = `
-  <rect x="120" y="660" width="10" height="${Math.max(520, lines.length * 64 + 120)}" rx="5" fill="${GOLD}"/>
-  <text x="170" y="720" font-family="Arial, Helvetica, sans-serif" font-size="46" font-weight="700" fill="${GOLD}">The takeaway</text>
-  <text x="170" y="${startY}" font-family="Arial, Helvetica, sans-serif" font-size="48" fill="${WHITE}">
-${tspans(lines, 170, startY, 64)}
+  <rect x="120" y="${titleY - 50}" width="10" height="${Math.max(440, contentH + 90)}" rx="5" fill="${GOLD}"/>
+  <text x="170" y="${titleY}" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="700" fill="${GOLD}">The takeaway</text>
+  <text x="170" y="${startY}" font-family="Arial, Helvetica, sans-serif" font-size="40" fill="${WHITE}" letter-spacing="0.5">
+${tspans(lines, 170, startY, lineH)}
   </text>`;
   return baseSvg(inner);
 }

@@ -12,17 +12,22 @@ import { pipelineConfig } from "../../pipeline/config";
 function buildScriptPrompt(input: ScriptInput): string {
   const c = input.claim;
   return [
-    `You are a short-form health video scriptwriter for EvidenceHub.`,
+    `You are a short-form health video scriptwriter for EvidenceHub, writing for TikTok / YouTube Shorts / Xiaohongshu.`,
     `Write a ~30-second spoken script for the "${input.template}" template about "${input.item}"` +
       `${input.category ? ` in the ${input.category} domain` : ""}.`,
-    c?.summary ? `Known evidence: ${c.summary}` : "",
+    c?.summary ? `Known evidence (place LAST in body, never first): ${c.summary}` : "",
     c?.studyCount
       ? `Study count: ${c.studyCount} (RCTs: ${c.rctCount ?? 0}, meta-analyses: ${c.metaCount ?? 0}).`
       : "",
     c?.evidenceScore != null ? `Evidence confidence: ${c.evidenceScore}/100.` : "",
     `Return STRICT JSON only: {"hook": string, "body": string[3-4], "ending": string}.`,
-    `Hook must be under 12 words. Each body sentence 15-25 words, conversational, evidence-based, no jargon.`,
-    `Ending under 18 words with a soft call-to-action. No emojis. No markdown.`,
+    ``,
+    `CRITICAL STRUCTURE RULES — this is what earns watch-time:`,
+    `- The opening HOOK will be injected by the system; still return a hook field but make it a short EMOTIONAL or CURIOUS line, never a knowledge-type question.`,
+    `- BODY ORDER: (1) open with a SURPRISING RESULT or personal outcome, (2) tell the STORY / mechanism, (3) place the STUDY / EVIDENCE in the LATER sentences — NEVER first.`,
+    `- Lead with feeling and curiosity. Show the outcome BEFORE the proof. Evidence builds trust only after you've earned attention.`,
+    `- Each body sentence 15-25 words, conversational, evidence-based, no jargon.`,
+    `- Ending under 18 words, soft call-to-action. No emojis. No markdown.`,
   ]
     .filter(Boolean)
     .join("\n");

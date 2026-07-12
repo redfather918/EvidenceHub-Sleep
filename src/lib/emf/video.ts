@@ -104,8 +104,16 @@ export async function buildRenderManifest(
   }));
   const n = segs.length;
 
-  // ---- Phase 1: concat still images + audio into intermediate MP4 ----
+// ---- Phase 1: Ken Burns stills + fade transitions + audio ----
+//
+// Visual strategy to avoid TikTok "Low-quality programmatic content" flag:
+//   ① zoompan (Ken Burns) on each still → pixels always changing, never frozen
+//   ② xfade=fade transitions → eliminates hard-cut "slideshow" detection
+//   ③ vignette + film grain + color grading → adds "filmed" quality
+//   ④ SVG backgrounds use feTurbulence noise (see assets.ts baseSvg)
+//
   const args: string[] = ["-y"];
+  const fps = 30;
 
   for (const s of segs) {
     args.push("-loop", "1", "-t", String(Math.max(0.1, s.end - s.start)), "-i", s.image);
@@ -119,12 +127,54 @@ export async function buildRenderManifest(
   }
   const audioInputIndex = n;
 
-  const scaleParts = segs.map(
-    (_, i) =>
-      `[${i}:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1[v${i}]`
-  );
-  const concatInputs = segs.map((_, i) => `[v${i}]`).join("");
-  const filter = `${scaleParts.join(";")};${concatInputs}concat=n=${n}:v=1:a=0[vout]`;
+  // --- Ken Burns zoompan per segment ---
+  // CRITICAL FIX (was flagging as "programmatic PPT"): the old zoom used
+  //   z='min(zoom+0.002,1.13)' which ACCUMULATES then CLAMPS at the ceiling
+  //   after ~65 frames — leaving the rest of every segment FROZEN (byte-identical
+  //   duplicate frames). TikTok's frozen-frame detector then flagged the video.
+  //
+  // NEW approach: linear, never-clamping zoom + pan driven by the output-frame
+  // counter `on`, so EVERY frame moves across the WHOLE segment. Direction and
+  // pan direction alternate per segment for natural, varied motion. This yields
+  // continuous motion vectors everywhere → defeats frozen-frame detection.
+  const kbParts = segs.map((s, i) => {
+    const dur = Math.max(0.5, s.end - s.start);
+    const frames = Math.round(dur * fps);
+    const D = Math.max(1, frames - 1);
+    // Alternate a push-in (1.00→1.30) with a pull-out (1.30→1.00), plus pan.
+    const zStart = i % 2 === 0 ? 1.00 : 1.30;
+    const zEnd   = i % 2 === 0 ? 1.30 : 1.00;
+    const panX   = i % 2 === 0 ? 70 : -70;
+    const panY   = i % 2 === 0 ? -90 : 90;
+    const zExpr = `${zStart}+(${zEnd}-${zStart})*(on/${D})`;
+    const xExpr = `min(max(0, iw/2 - iw/(2*zoom) + ${panX}*(on/${D})), iw - iw/zoom)`;
+    const yExpr = `min(max(0, ih/2 - ih/(2*zoom) + ${panY}*(on/${D})), ih - ih/zoom)`;
+    return `[${i}:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,zoompan=z='${zExpr}':x='${xExpr}':y='${yExpr}':d=${frames}:s=1080x1920:fps=${fps},format=yuv420p[kb${i}]`;
+  });
+
+  // --- xfade fade transitions between consecutive segments ---
+  const fadeDur = 0.4; // seconds of cross-fade overlap
+  let xfadeChain: string;
+  if (n === 1) {
+    xfadeChain = `[kb0]copy[vout]`;
+  } else {
+    let accumTime = segs[0].end - segs[0].start;
+    // First transition: kb0 → kb1
+    xfadeChain = `[kb0][kb1]xfade=transition=fade:duration=${fadeDur}:offset=${accumTime.toFixed(2)}[xf0]`;
+    // Subsequent transitions: previous xfade output → next kb
+    for (let i = 2; i < n; i++) {
+      accumTime += (segs[i - 1].end - segs[i - 1].start) - fadeDur;
+      const prev = `xf${i - 2}`;
+      xfadeChain += `;[${prev}][kb${i}]xfade=transition=fade:duration=${fadeDur}:offset=${accumTime.toFixed(2)}[xf${i - 1}]`;
+    }
+    const lastXf = `xf${n - 2}`;
+    // NOTE: This ffmpeg build has minimal filter support (no d0/dd on vignette,
+    // no all= on noise). The core anti-PPT detection comes from zoompan + xfade.
+    // SVG-level noise texture (feTurbulence in assets.ts) handles grain visually.
+    xfadeChain += `;[${lastXf}]eq=contrast=1.05:saturation=1.03[vout]`;
+  }
+
+  const filter = `${kbParts.join(";")};${xfadeChain}`;
 
   args.push("-filter_complex", filter);
   args.push("-map", "[vout]");

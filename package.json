@@ -23,6 +23,7 @@
     "emf:generate": "tsx scripts/emf-generate.ts",
     "emf:migrate": "tsx scripts/emf-migrate.ts",
     "emf:youtube-auth": "tsx scripts/emf-youtube-auth.ts",
+    "emf:tiktok-auth": "tsx scripts/emf-tiktok-auth.ts",
     "emf:publish": "tsx scripts/emf-publish.ts"
   },
   "dependencies": {

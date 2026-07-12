@@ -8,6 +8,7 @@
 import type { Schedule, PlannedItem, ScriptDraft } from "./types";
 import { generateScriptWithLLM } from "./llm";
 import { buildAssetSpecs, generateAssetsWithFlux, renderSvgCards, type FluxResult } from "./assets";
+import { pickViralHook } from "./hooks";
 import { synthesizeVoice, EDGE_VOICE_POOL } from "./tts";
 import { buildRenderManifest, renderVideoWithFfmpeg, isMp4Valid } from "./video";
 import { writeAssFile } from "./subtitles";
@@ -16,6 +17,8 @@ import { upsertScheduleDb, upsertMediaAssetDb, upsertRenderJobDb, isEmfDbReady }
 export interface MediaGenOptions {
   live?: boolean;
   limit?: number;
+  onlyItems?: string[];
+  excludeItems?: string[];
 }
 
 export interface ProductionPackage {
@@ -31,7 +34,15 @@ export async function generateMediaForSchedule(
   schedule: Schedule,
   opts: MediaGenOptions = {}
 ): Promise<ProductionPackage[]> {
-  const items = opts.limit && opts.limit > 0 ? schedule.items.slice(0, opts.limit) : schedule.items;
+  let items = opts.limit && opts.limit > 0 ? schedule.items.slice(0, opts.limit) : schedule.items;
+  if (opts.onlyItems?.length) {
+    const want = new Set(opts.onlyItems.map((s) => s.toLowerCase()));
+    items = items.filter((it) => want.has(it.item.toLowerCase()));
+  }
+  if (opts.excludeItems?.length) {
+    const ex = new Set(opts.excludeItems.map((s) => s.toLowerCase()));
+    items = items.filter((it) => !ex.has(it.item.toLowerCase()));
+  }
   const dbReady = isEmfDbReady();
 
   if (opts.live && dbReady) {
@@ -53,6 +64,11 @@ export async function generateMediaForSchedule(
       template: item.template,
       kind: item.kind,
     });
+
+    // Inject a viral (emotion / curiosity) hook from the library. The old
+    // pipeline opened with a knowledge-type claim; platforms reward
+    // feeling-first openings, with evidence placed later in the script.
+    script.hook = pickViralHook(item.item, { pillar: item.pillar });
 
     const assetSpecs = buildAssetSpecs(item.item, item.templateCode);
     const assets = await generateAssetsWithFlux(assetSpecs, { live: opts.live });

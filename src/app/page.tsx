@@ -17,16 +17,16 @@ import { ClaimCard } from "@/components/ClaimCard";
 import { FilterBar, type FilterState } from "@/components/explorer/FilterBar";
 
 export const metadata = {
-  title: "EvidenceHub — Search Evidence-Based Sleep & Health Claims",
+  title: "EvidenceHub Sleep — 睡眠证据库，每条都有科学可信度评分",
   description:
-    "An AI-native evidence search engine. Explore 200+ scored scientific claims on sleep, nutrition, heart health and longevity — filtered by RCT, meta-analysis, and evidence score.",
+    "466 条睡眠证据，每条都有科学可信度评分。给人看的证据库，也是给 AI 用的 API。基于人体 RCT、荟萃分析与机制证据，可追溯、可计算。",
   alternates: {
     canonical: "/",
   },
   openGraph: {
-    title: "EvidenceHub — Evidence Search Engine",
+    title: "EvidenceHub Sleep — 睡眠证据库，每条都有科学可信度评分",
     description:
-      "Search evidence-based sleep and health claims. Scored on human RCTs, meta-analyses, mechanism, and safety.",
+      "466 条睡眠证据，每条都有科学可信度评分。给人看的证据库，也是给 AI 用的 API。",
     url: "/",
     type: "website",
   },
@@ -83,6 +83,18 @@ export default async function HomePage({
 
   const categories = [...new Set(allClaims.map((c) => c.category))].sort();
 
+  // Representative claims for the hero deep-links. Only link to claims that
+  // actually exist in the dataset, so the buttons never 404.
+  const REPRESENTATIVE_LINKS: { slug: string; label: string }[] = [
+    { slug: "melatonin-sleep-latency", label: "褪黑素能缩短入睡时间？" },
+    { slug: "magnesium-sleep-quality", label: "镁能改善睡眠？" },
+    { slug: "glycine-sleep-latency", label: "甘氨酸助眠？" },
+    { slug: "exercise-sleep-quality", label: "运动改善睡眠？" },
+  ];
+  const representativeClaims = REPRESENTATIVE_LINKS.filter((r) =>
+    allClaims.some((c) => c.slug === r.slug)
+  );
+
   // Trending: prefer high-confidence, fall back to top by score
   const highConf = trendingRaw.filter((c) => c.confidence === "high");
   const trendingClaims = [...highConf, ...trendingRaw.filter((c) => c.confidence !== "high")].slice(0, 6);
@@ -130,44 +142,48 @@ export default async function HomePage({
 
   return (
     <div className="space-y-12">
-      {/* Hero / Search */}
-      <section className="text-center py-10">
-        <h1 className="text-4xl font-bold text-gray-900 mb-3">
-          Search evidence, <span className="text-brand-600">not opinions</span>
+      {/* Hero */}
+      <section className="text-center py-12 md:py-16">
+        <span className="inline-block mb-5 px-3 py-1 rounded-full bg-brand-50 text-brand-700 text-sm font-medium border border-brand-100">
+          每条证据都可追溯 · 带科学可信度评分
+        </span>
+        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 leading-tight">
+          {stats.claims} 条睡眠证据，<br className="hidden md:block" />
+          每条都有科学可信度评分
         </h1>
-        <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
-          An AI-native evidence search engine. Every claim is scored on human RCTs, meta-analyses,
-          mechanism, and safety — then made machine-readable for AI.
+        <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto mb-8">
+          给人看的证据库，也是给 AI 用的 API。
         </p>
-        <form action="/search" className="max-w-2xl mx-auto">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              name="q"
-              defaultValue={filter.q || ""}
-              placeholder="Search evidence: glycine, magnesium, melatonin…"
-              className="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent text-gray-800"
-            />
-            <button
-              type="submit"
-              className="bg-brand-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-brand-700"
-            >
-              Search
-            </button>
-          </div>
-        </form>
-        <div className="flex flex-wrap gap-2 justify-center mt-4 text-sm">
-          <span className="text-gray-400">Try:</span>
-          {["glycine sleep", "magnesium dose", "melatonin safety", "ashwagandha"].map((t) => (
-            <Link
-              key={t}
-              href={`/search?q=${encodeURIComponent(t)}`}
-              className="text-brand-600 hover:underline"
-            >
-              {t}
-            </Link>
-          ))}
+        <div className="flex flex-wrap gap-3 justify-center mb-8">
+          <Link
+            href="/claims"
+            className="bg-brand-600 text-white px-7 py-3 rounded-lg font-medium hover:bg-brand-700 text-base"
+          >
+            Explore claims &rarr;
+          </Link>
+          <Link
+            href="/api-docs"
+            className="bg-white text-brand-700 border border-brand-300 px-7 py-3 rounded-lg font-medium hover:bg-brand-50 text-base"
+          >
+            给 AI 用的 API &rarr;
+          </Link>
         </div>
+        {representativeClaims.length > 0 && (
+          <div>
+            <p className="text-sm text-gray-400 mb-3">大家都在查的代表性证据：</p>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {representativeClaims.map((r) => (
+                <Link
+                  key={r.slug}
+                  href={`/claim/${r.slug}`}
+                  className="text-sm px-4 py-2 rounded-full bg-gray-100 border border-gray-200 text-gray-700 hover:bg-brand-50 hover:text-brand-700 hover:border-brand-300 transition-colors"
+                >
+                  {r.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Stats bar */}

@@ -18,16 +18,16 @@ import { ClaimCard } from "@/components/ClaimCard";
 import { FilterBar, type FilterState } from "@/components/explorer/FilterBar";
 
 export const metadata = {
-  title: "EvidenceHub Sleep — 睡眠证据库，每条都有科学可信度评分",
+  title: "EvidenceHub Sleep — Sleep Evidence, Scored",
   description:
-    "466 条睡眠证据，每条都有科学可信度评分。给人看的证据库，也是给 AI 用的 API。基于人体 RCT、荟萃分析与机制证据，可追溯、可计算。",
+    "466+ sleep evidence claims, each with a transparent scientific confidence score. Human-readable summaries. AI-ready API. Built on RCTs and meta-analyses.",
   alternates: {
     canonical: "/",
   },
   openGraph: {
-    title: "EvidenceHub Sleep — 睡眠证据库，每条都有科学可信度评分",
+    title: "EvidenceHub Sleep — Sleep Evidence, Scored",
     description:
-      "466 条睡眠证据，每条都有科学可信度评分。给人看的证据库，也是给 AI 用的 API。",
+      "466+ sleep evidence claims, each with a transparent scientific confidence score. Human-readable. AI-ready.",
     url: "/",
     type: "website",
   },
@@ -87,10 +87,10 @@ export default async function HomePage({
   // Representative claims for the hero deep-links. Only link to claims that
   // actually exist in the dataset, so the buttons never 404.
   const REPRESENTATIVE_LINKS: { slug: string; label: string }[] = [
-    { slug: "melatonin-sleep-latency", label: "褪黑素能缩短入睡时间？" },
-    { slug: "magnesium-sleep-quality", label: "镁能改善睡眠？" },
-    { slug: "glycine-sleep-latency", label: "甘氨酸助眠？" },
-    { slug: "exercise-sleep-quality", label: "运动改善睡眠？" },
+    { slug: "melatonin-sleep-latency", label: "Does melatonin shorten sleep latency?" },
+    { slug: "magnesium-sleep-quality", label: "Does magnesium improve sleep?" },
+    { slug: "glycine-sleep-latency", label: "Does glycine help you fall asleep?" },
+    { slug: "exercise-sleep-quality", label: "Does exercise improve sleep?" },
   ];
   const representativeClaims = REPRESENTATIVE_LINKS.filter((r) =>
     allClaims.some((c) => c.slug === r.slug)
@@ -156,14 +156,14 @@ export default async function HomePage({
           />
         </div>
         <span className="inline-block mb-5 px-3 py-1 rounded-full bg-brand-50 text-brand-700 text-sm font-medium border border-brand-100">
-          每条证据都可追溯 · 带科学可信度评分
+          Every claim is traceable · Scored for confidence
         </span>
         <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 leading-tight">
-          {stats.claims} 条睡眠证据，<br className="hidden md:block" />
-          每条都有科学可信度评分
+          {stats.claims} sleep evidence claims,<br className="hidden md:block" />
+          each scored for scientific confidence
         </h1>
         <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto mb-8">
-          给人看的证据库，也是给 AI 用的 API。
+          A database built for humans. An API built for AI.
         </p>
         <div className="flex flex-wrap gap-3 justify-center mb-8">
           <Link
@@ -176,12 +176,12 @@ export default async function HomePage({
             href="/api-docs"
             className="bg-white text-brand-700 border border-brand-300 px-7 py-3 rounded-lg font-medium hover:bg-brand-50 text-base"
           >
-            给 AI 用的 API &rarr;
+            API for AI &rarr;
           </Link>
         </div>
         {representativeClaims.length > 0 && (
           <div>
-            <p className="text-sm text-gray-400 mb-3">大家都在查的代表性证据：</p>
+            <p className="text-sm text-gray-400 mb-3">Representative claims people are checking:</p>
             <div className="flex flex-wrap gap-2 justify-center">
               {representativeClaims.map((r) => (
                 <Link

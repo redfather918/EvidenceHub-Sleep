@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import Script from "next/script";
 import "./globals.css";
 
@@ -25,6 +26,11 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://sleep.p1web.site"),
   alternates: {
     canonical: "/",
+  },
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/logo.jpg",
   },
   openGraph: {
     title: "EvidenceHub Sleep — Evidence-Based Sleep Science",
@@ -121,8 +127,17 @@ export default function RootLayout({
       <body>
         <nav className="border-b border-gray-200 bg-white sticky top-0 z-50">
           <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-            <Link href="/" className="font-bold text-lg text-brand-700">
-              EvidenceHub <span className="text-gray-400 font-normal">Sleep</span>
+            <Link href="/" className="flex items-center gap-2 font-bold text-lg text-brand-700">
+              <Image
+                src="/logo.jpg"
+                alt="EvidenceHub Sleep"
+                width={32}
+                height={32}
+                className="rounded-md object-cover"
+                priority
+              />
+              <span>EvidenceHub</span>
+              <span className="text-gray-400 font-normal">Sleep</span>
             </Link>
             <div className="flex items-center gap-6 text-sm">
               <Link href="/topics" className="text-gray-600 hover:text-brand-700">
@@ -153,7 +168,16 @@ export default function RootLayout({
           <div className="max-w-6xl mx-auto px-4 py-8 text-sm text-gray-500">
             <div className="flex flex-wrap gap-8">
               <div className="flex-1 min-w-[200px]">
-                <h3 className="font-semibold text-gray-700 mb-2">EvidenceHub Sleep</h3>
+                <div className="flex items-center gap-2 mb-2">
+                  <Image
+                    src="/logo.jpg"
+                    alt="EvidenceHub Sleep"
+                    width={24}
+                    height={24}
+                    className="rounded object-cover"
+                  />
+                  <h3 className="font-semibold text-gray-700">EvidenceHub Sleep</h3>
+                </div>
                 <p>A computable knowledge graph for sleep science.</p>
                 <p className="mt-2 text-xs">
                   Not medical advice. Evidence is for educational purposes. Always consult a healthcare

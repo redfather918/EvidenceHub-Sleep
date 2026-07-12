@@ -1,6 +1,7 @@
 // EvidenceHub — Demo CTA Page (for video ending shot)
 
 import Link from "next/link";
+import Image from "next/image";
 
 export const metadata = {
   title: "EvidenceHub Sleep — Sleep Evidence, Scored.",
@@ -13,10 +14,15 @@ export default function DemoPage() {
       <div className="max-w-4xl mx-auto px-6 text-center">
 
         {/* Logo / Brand */}
-        <div className="mb-8">
-          <span className="inline-block px-4 py-1.5 rounded-full bg-brand-500/20 text-brand-300 text-sm font-medium border border-brand-400/30">
-            EvidenceHub Sleep
-          </span>
+        <div className="mb-8 flex justify-center">
+          <Image
+            src="/logo.jpg"
+            alt="EvidenceHub Sleep"
+            width={80}
+            height={80}
+            className="rounded-2xl shadow-2xl object-cover border border-brand-400/30"
+            priority
+          />
         </div>
 
         {/* Headline */}

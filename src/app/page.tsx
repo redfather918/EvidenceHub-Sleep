@@ -1,6 +1,7 @@
 // EvidenceHub — Homepage = Evidence Explorer (V3)
 
 import Link from "next/link";
+import Image from "next/image";
 import {
   getTrendingClaimsDb,
   getLatestClaimsDb,
@@ -144,6 +145,16 @@ export default async function HomePage({
     <div className="space-y-12">
       {/* Hero */}
       <section className="text-center py-12 md:py-16">
+        <div className="flex justify-center mb-5">
+          <Image
+            src="/logo.jpg"
+            alt="EvidenceHub Sleep"
+            width={72}
+            height={72}
+            className="rounded-2xl shadow-lg object-cover"
+            priority
+          />
+        </div>
         <span className="inline-block mb-5 px-3 py-1 rounded-full bg-brand-50 text-brand-700 text-sm font-medium border border-brand-100">
           每条证据都可追溯 · 带科学可信度评分
         </span>

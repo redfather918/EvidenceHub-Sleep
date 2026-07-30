@@ -149,6 +149,12 @@ export default function RootLayout({
               <Link href="/graph" className="text-gray-600 hover:text-brand-700">
                 Graph
               </Link>
+              <Link href="/alternatives" className="text-gray-600 hover:text-brand-700">
+                Alternatives
+              </Link>
+              <Link href="/decision" className="text-gray-600 hover:text-brand-700">
+                Decision
+              </Link>
               <a href="/api-docs" className="text-gray-600 hover:text-brand-700">
                 API
               </a>
@@ -189,6 +195,8 @@ export default function RootLayout({
                 <ul className="space-y-1">
                   <li><Link href="/topics" className="hover:text-brand-700">Topics</Link></li>
                   <li><Link href="/claims" className="hover:text-brand-700">All Claims</Link></li>
+                  <li><Link href="/alternatives" className="hover:text-brand-700">Natural Alternatives</Link></li>
+                  <li><Link href="/decision" className="hover:text-brand-700">Decision Flow</Link></li>
                   <li><Link href="/search" className="hover:text-brand-700">Search</Link></li>
                 </ul>
               </div>

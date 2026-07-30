@@ -274,6 +274,35 @@ export default async function HomePage({
         </div>
       </section>
 
+      {/* Natural Alternatives (OpenAlternative model) */}
+      <section className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="min-w-0">
+          <div className="text-xs font-semibold uppercase tracking-wider text-emerald-100 mb-1">
+            💊 Natural Alternatives
+          </div>
+          <h2 className="text-xl font-bold">
+            Ambien, Xanax, Lunesta… and the natural stacks people use instead
+          </h2>
+          <p className="text-sm text-emerald-100 mt-1">
+            Side-by-side comparisons for &quot;[drug] + natural alternative&quot; searches.
+          </p>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <Link
+            href="/alternatives"
+            className="bg-white text-emerald-700 px-5 py-2.5 rounded-lg font-medium hover:bg-emerald-50 whitespace-nowrap"
+          >
+            Browse alternatives &rarr;
+          </Link>
+          <Link
+            href="/decision"
+            className="bg-emerald-800 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-emerald-900 whitespace-nowrap"
+          >
+            Decision flow &rarr;
+          </Link>
+        </div>
+      </section>
+
       {/* Trending Evidence */}
       <section>
         <div className="flex items-center justify-between mb-4">

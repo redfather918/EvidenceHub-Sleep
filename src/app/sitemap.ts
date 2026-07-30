@@ -2,6 +2,7 @@
 
 import { MetadataRoute } from "next";
 import { getAllClaimsDb, getAllTopicsDb } from "@/lib/db";
+import { getAllAlternatives } from "@/lib/alternatives";
 
 const SITE_URL = "https://sleep.p1web.site";
 
@@ -37,6 +38,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "monthly",
       priority: 0.5,
     },
+    {
+      url: `${SITE_URL}/alternatives`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/decision`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.6,
+    },
   ];
 
   const [claims, topics] = await Promise.all([
@@ -58,5 +71,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...staticPages, ...claimPages, ...topicPages];
+  const alternativePages: MetadataRoute.Sitemap = getAllAlternatives().map((alt) => ({
+    url: `${SITE_URL}/alternatives/${alt.slug}`,
+    lastModified: new Date(),
+    changeFrequency: "weekly" as const,
+    priority: 0.8,
+  }));
+
+  return [...staticPages, ...claimPages, ...topicPages, ...alternativePages];
 }

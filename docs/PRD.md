@@ -479,6 +479,8 @@ Magnesium ─── improves sleep ─── Sleep latency
 - Search（关键词搜索）✅
 - API 文档页面 ✅
 - RSS Feed ✅
+- Natural Alternatives 目录（`/alternatives` + `/alternatives/[slug]`）✅
+- 症状决策流（`/decision`，交互式筛选）✅
 
 ### Claim 页面 11 模块 ✅
 
@@ -513,6 +515,49 @@ GET /api/search?q=melatonin&limit=5
 - Weekly Evidence Digest
 - Full database access
 - Advanced dose calculator
+
+---
+
+## 九·补、Natural Alternatives 目录 + 症状决策流（OpenAlternative 增长模式落地）
+
+> 借鉴 OpenAlternative「需求策展 + Programmatic SEO + 卖铲子」的商业逻辑，将 EvidenceHub 从「成分科学站」升级为「天然助眠 / 处方药平替超级结构化目录」，先拿 Biohacking 长尾流量，再把健康目录架构产品化。
+
+### 商业动机（对应文章 5 大策略）
+
+| 维度 | 落地形态 |
+|---|---|
+| ① 处方药平替关键词矩阵 | `/alternatives/[slug]` 覆盖 "Ambien natural alternative"、"Xanax supplement alternative"、"melatonin alternatives" 等高意图搜索词 |
+| ② 信息策展 + 降维呈现 | 每种药物含「事实卡 + 自然平替并排对比表 + 天然成分卡（靶点/起效/半衰期/证据等级/剂量）」 |
+| ③ 社区点火 | 每页附 PubMed 可验证搜索链接（不编造 PMID），无软文、无广告混淆，适配 r/supplements、r/biohacking 分享 |
+| ④ 变现 | 平替详情页底部预留 Affiliate / 赞助位（明确标注，不影响证据评级） |
+| ⑤ 产品化飞轮 | 数据层 + 生成器天然可打包为「HealthDir Starter」模板；结构化数据可对外提供 API/Widget |
+
+### 功能 1：Natural Alternatives 目录
+
+- **索引页 `/alternatives`**：6 个处方/热门助眠对象的关键词矩阵着陆页
+  - `ambien`（安眠药 Ambien 的天然平替）
+  - `xanax`（Xanax 天然补充剂平替，抗焦 + 助眠）
+  - `melatonin-alternatives`（避免褪黑素依赖的每日可用平替）
+  - `benzodiazepines`（苯二氮䓬类平替）
+  - `lunesta`（Lunesta 平替）
+  - `huberman-cocktail`（Huberman 睡眠配方拆解）
+- **详情页 `/alternatives/[slug]`**：药品事实（用途/常见剂量/典型副作用/戒断注意）→ 与天然成分栈的**并排对比表**（起效时间、半衰期、作用机制、副作用对比）→ 天然成分卡（链接到 `/topics/[slug]`）→ FAQ（FAQPage JSON-LD）→ 医生免责声明。
+
+### 功能 2：症状决策流 `/decision`
+
+- 交互式筛选：按失眠类型一键筛出对应成分
+  - **入睡困难（Sleep Onset）** → Apigenin、L-Theanine、Magnesium Glycinate、Tart Cherry
+  - **夜醒 / 早醒（Sleep Maintenance）** → Magnesium Glycinate、Glycine、Ashwagandha、Tart Cherry
+  - **压力型失眠（Anxiety-induced）** → L-Theanine、Ashwagandha、Apigenin、Magnesium Glycinate
+- 纯客户端组件（`"use client"`），点击即渲染对应成分卡（链接到 `/supplements` 或 `/topics`）。
+
+### 实现要点
+
+- **零数据库变更**：数据全部来自静态模块 `src/data/alternatives.ts` + 访问层 `src/lib/alternatives.ts`，通过 `isSupabaseConfigured` 同构读取，不影响 Claim Graph 主数据模型。
+- **SEO 就绪**：每平替详情页输出 FAQ JSON-LD + Breadcrumb JSON-LD；`/alternatives` 与所有 `[slug]` 已纳入 `src/app/sitemap.ts` 动态 Sitemap。
+- **接入点**：导航栏新增 Alternatives 入口；首页新增 emerald "Natural Alternatives" 引导区块；sitemap 已扩展。
+- **科学声明保守化**：所有对比均标注「非医疗建议、需咨询医生」，且仅指向可验证的 PubMed 检索链接，不编造具体论文编号。
+- **状态**：✅ 已实现，`next build` 干净通过（54/54 页面），所有新路由生产模式实测 HTTP 200。
 
 ---
 
@@ -663,6 +708,11 @@ ChatGPT, Claude, Gemini, Perplexity, AI Agents
 - [x] Seed 数据迁移脚本（scripts/seed-to-supabase.ts）
 - [x] Supabase 连接测试脚本（scripts/test-supabase.ts）
 - [x] 腾讯云服务器部署（sleep.p1web.site）
+- [x] Natural Alternatives 目录（`/alternatives` + `/alternatives/[slug]`，6 个处方/热门助眠对象平替页）
+- [x] 症状决策流（`/decision`，入睡困难 / 夜醒早醒 / 压力型失眠 一键筛选）
+- [x] 平替静态数据层（`src/data/alternatives.ts` + `src/lib/alternatives.ts`，零 DB schema 变更）
+- [x] 平替详情页 FAQ + Breadcrumb JSON-LD，并纳入动态 Sitemap
+- [x] 导航栏 + 首页 "Natural Alternatives" 引导区块接入
 
 ### 路线图
 
@@ -708,7 +758,7 @@ ChatGPT, Claude, Gemini, Perplexity, AI Agents
 
 ---
 
-*PRD v4.0 — Updated: 2026-07-07*
+*PRD v4.0 — Updated: 2026-07-31 (新增 Natural Alternatives 目录 + 症状决策流)*
 *Build: 246 claims, 227 studies (PubMed), 8 topics — live from Supabase*
 *Pipeline: PubMed fetcher ✅ verified (227/227) + AI extractor + Evidence scorer + CLI runner (v1)*
 *Database: Supabase PostgreSQL ✅ online (dual-source: Supabase / static fallback)*

@@ -54,6 +54,9 @@ EvidenceHub Sleep 是一个基于 Next.js 14 的全栈 Web 应用，核心是将
 │  │  /search        → 搜索页                                    │  │
 │  │  /api-docs      → API 文档                                  │  │
 │  │  /rss.xml       → RSS Feed                                 │  │
+│  │  /alternatives  → 处方药用天然平替目录 (静态数据)           │  │
+│  │  /alternatives/[slug] → 单药品平替详情 (对比表+FAQ)        │  │
+│  │  /decision      → 症状决策流 (交互式筛选)                  │  │
 │  └───────────────────────────────────────────────────────────┘  │
 │                                                                   │
 │  ┌───────────────────────────────────────────────────────────┐  │
@@ -165,6 +168,9 @@ GitHub Actions → curl POST /api/cron/fetch-papers (CRON_SECRET 鉴权)
 | `/search` | Server-rendered | 静态 / Supabase | 支持 searchParams |
 | `/api-docs` | SSG | 静态 | API 文档 |
 | `/rss.xml` | Dynamic | Supabase / 静态 | RSS Feed |
+| `/alternatives` | SSG | 静态 (`src/lib/alternatives.ts`) | 平替目录索引 (Programmatic SEO) |
+| `/alternatives/[slug]` | SSG (generateStaticParams) | 静态 (`src/lib/alternatives.ts`) | 单药品平替详情 (对比表 + FAQ JSON-LD) |
+| `/decision` | SSG + Client Component | 静态 | 症状决策流 (交互式筛选) |
 | `/api/claim/[slug]` | Dynamic | Supabase / 静态 | Claim JSON API |
 | `/api/evidence/[topic]` | Dynamic | Supabase / 静态 | Evidence JSON API |
 | `/api/search` | Dynamic | Supabase / 静态 | Search JSON API |
@@ -241,6 +247,12 @@ evidencehub-sleep/
 │   │   │   └── page.tsx           # 搜索页
 │   │   ├── api-docs/
 │   │   │   └── page.tsx           # API 文档页
+│   │   ├── alternatives/
+│   │   │   ├── page.tsx           # 平替目录索引 (Programmatic SEO)
+│   │   │   └── [slug]/
+│   │   │       └── page.tsx       # 单药品平替详情 (对比表 + FAQ JSON-LD)
+│   │   ├── decision/
+│   │   │   └── page.tsx           # 症状决策流页
 │   │   ├── rss.xml/
 │   │   │   └── route.ts           # RSS Feed
 │   │   ├── api/
@@ -262,9 +274,12 @@ evidencehub-sleep/
 │   ├── components/
 │   │   ├── ClaimCard.tsx          # Claim 卡片 (列表用)
 │   │   ├── EvidenceScoreBadge.tsx # 证据评分徽章
-│   │   └── StarRating.tsx         # 星级评分
+│   │   ├── StarRating.tsx         # 星级评分
+│   │   ├── AlternativeCard.tsx    # 平替成分卡 (详情页用)
+│   │   └── DecisionFlow.tsx       # 症状决策流交互组件 ("use client")
 │   ├── data/
-│   │   └── seed-data.ts           # 静态数据源 (11 claims, 15 studies, 回退用)
+│   │   ├── seed-data.ts           # 静态数据源 (11 claims, 15 studies, 回退用)
+│   │   └── alternatives.ts        # 平替静态数据 (6 处方/热门助眠对象 + 3 症状决策)
 │   ├── lib/
 │   │   ├── types.ts               # TypeScript 类型定义
 │   │   ├── data.ts                # 静态数据访问层 (回退模式)
@@ -272,6 +287,7 @@ evidencehub-sleep/
 │   │   ├── supabase.ts            # Supabase 客户端封装
 │   │   ├── cron-auth.ts           # Cron API 鉴权 (CRON_SECRET)
 │   │   ├── affiliate.ts           # Affiliate 链接管理
+│   │   ├── alternatives.ts        # 平替数据访问层 (getAllAlternatives, getAlternativeBySlug)
 │   │   ├── newsletter.ts          # Newsletter 订阅管理
 │   │   └── seo.ts                 # SEO/GEO 助手
 │   └── pipeline/
@@ -730,6 +746,7 @@ jobs:
 - 静态页面 (/, /topics, /claims, /studies, /search, /api-docs)
 - 所有 Claim 页面
 - 所有 Topic 页面
+- Natural Alternatives 目录（`/alternatives` + 所有 `/alternatives/[slug]`）
 
 ### 8.3 Robots.txt + RSS Feed
 
@@ -826,6 +843,24 @@ SEO：`generateMetadata`（canonical `/article/[slug]`、OG/Twitter）+ JSON-LD�
 #### 9.5.4 数据模型说明
 
 MVP 不新增数据库表，文章完全复用 `ClaimWithRelations`。未来可选扩展 `articles` 表（编辑化标题/导语，由 pipeline LLM 生成）与 gated LLM 润色层。
+
+### 9.6 AlternativeCard（Natural Alternatives 详情页用）
+
+平替详情页中展示「天然成分卡」。
+
+- 成分名 + 中文名
+- 一句话 tagline（作用定位）
+- 结构化参数 chips：起效时间 (onset) / 半衰期 / 证据等级 / 最佳剂量
+- 链接到 `/topics/[slug]`（或后续 `/supplements/[slug]`）
+
+### 9.7 DecisionFlow（症状决策流，`"use client"`）
+
+`/decision` 页面的交互组件。
+
+- 三个症状按钮：入睡困难 (Sleep Onset) / 夜醒早醒 (Sleep Maintenance) / 压力型失眠 (Anxiety-induced)
+- 点击后从静态数据（`src/data/alternatives.ts` 的 `decisions`）筛出对应成分 id，渲染成分卡网格
+- 纯客户端状态，无服务端请求；成分卡链接到 `/topics/[slug]`
+- 每条症状附带筛选说明 tip（临床保守措辞 + 医生免责）
 
 ---
 
@@ -972,6 +1007,10 @@ MVP 无 Rate Limiting。生产环境需要添加。
 | `/rss.xml` | Dynamic | ✅ 200 |
 | `/sitemap.xml` | Dynamic | ✅ 200 |
 | `/robots.txt` | Static | ✅ 200 |
+| `/alternatives` | SSG | ✅ 200 (关键词矩阵着陆) |
+| `/alternatives/ambien` | SSG (generateStaticParams) | ✅ 200 (对比表 + FAQ JSON-LD) |
+| `/alternatives/xanax` | SSG (generateStaticParams) | ✅ 200 |
+| `/decision` | SSG + Client | ✅ 200 (决策流交互) |
 
 **API 验证：**
 
@@ -1034,6 +1073,8 @@ MVP 无 Rate Limiting。生产环境需要添加。
 - [x] 双数据源架构 (Supabase + 静态回退)
 - [x] 首页实时 stats + 可点击跳转
 - [x] /claims /topics /studies 从 Supabase 读取
+- [x] Natural Alternatives 目录（/alternatives + /alternatives/[slug]，OpenAlternative 增长模式）
+- [x] 症状决策流（/decision，症状 → 成分一键筛选）
 
 ### Phase 3: AI 全链路 (当前重点)
 
@@ -1095,7 +1136,7 @@ MVP 无 Rate Limiting。生产环境需要添加。
 
 ---
 
-*TRD v2.0 — Updated: 2026-07-07*
+*TRD v2.0 — Updated: 2026-07-31 (新增 Natural Alternatives 目录 + 症状决策流)*
 *Architecture: Next.js 14 + Supabase PostgreSQL + GitHub Actions*
 *Database: Supabase online (dual-source: Supabase / static fallback)*
 *Pipeline: fetch-papers verified (227/227), ai-parse pending API key*

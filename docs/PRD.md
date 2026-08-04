@@ -1,767 +1,500 @@
-# EvidenceHub — PRD 索引（Active Blueprint = V3）
+# EvidenceHub Sleep — 产品需求文档 (PRD)
 
-> ⚠️ **当前活跃蓝图：EvidenceHub V3（AI-Native Evidence Search Engine）**
-> 本周定义为 **Product Week**，停止零散功能，围绕以下四份工程可执行 PRD 做产品化重构。
+> **Version 5.0 · 2026-08-04**
+> A database built for humans. An API built for AI.
 
-## V3 文档导航
+---
 
-| 文档 | 范围 | 等级 |
+## 1. 产品定位
+
+### 1.1 一句话定义
+
+EvidenceHub Sleep 是一个**睡眠科学证据搜索引擎**——将全球 PubMed 研究文献结构化为可计算的证据图谱，让人类和 AI 在 30 秒内获取**有置信度评分的、可溯源的**科学结论，而非营销内容。
+
+### 1.2 核心问题
+
+| 用户痛点 | 现状 | EvidenceHub 的解法 |
 |---|---|---|
-| [PRD/V3-Overview.md](PRD/V3-Overview.md) | 总览、四模块架构、北极星、Roadmap | Master |
-| [PRD/V3-Explorer-PRD.md](PRD/V3-Explorer-PRD.md) | 首页 Explorer + Claim 升级 + Compare + /api/explore + AI 引用 | P0 |
-| [PRD/V3-Graph-PRD.md](PRD/V3-Graph-PRD.md) | 节点/边、graph_edges、布局、/api/graph | P1 |
-| [PRD/V3-Programmatic-SEO-PRD.md](PRD/V3-Programmatic-SEO-PRD.md) | Entity SEO、Schema.org、自动发布、内链 | 贯穿 |
-| [PRD/V3-Growth-Engine-PRD.md](PRD/V3-Growth-Engine-PRD.md) | GSC 监控、内容生产、外链、Affiliate、看板 | 贯穿 |
+| "褪黑素有用吗？" 搜到的全是营销博客 | SEO 内容农场，无法分辨科学性 | 每条结论附置信度评分 + 原始 RCT 引用 |
+| "甘氨酸和镁哪个更有效？" 没有对比工具 | 需要自己读多篇论文 | 结构化 Claim Graph，可对比证据强度、剂量、人群 |
+| AI 搜索引擎回答健康问题时编造引用 | LLM 幻觉，无法验证 | 提供 AI 可调用的结构化 JSON API，每条数据可溯源到 PubMed |
+| 处方安眠药有依赖性，天然平替有哪些？ | 信息碎片化，缺乏科学对比 | 处方药 vs 天然补充剂并排对比表 + 症状决策流 |
+
+### 1.3 价值主张
+
+- **对搜索用户**：不再猜 "studies show" 到底什么意思——每个结论都有 0-100 的证据置信度评分
+- **对 AI 系统**：不是爬网页，而是调用结构化 API 获取可计算的证据数据
+- **对专业用户**：30 秒内获取某成分的人类 RCT 数量、推荐剂量、适用人群、局限性
+- **对健康决策者**：处方药与天然平替的科学对比，而非软文推荐
+
+### 1.4 产品愿景
+
+> **成为 Sleep 领域的 PubMed + Wikipedia + AI Knowledge Layer。**
+
+长期目标：Sleep Knowledge Infrastructure Layer——睡眠科学的知识基础设施层。
 
 ---
 
-# EvidenceHub Sleep — PRD v4.0（历史参考，已被 V3 演进）
+## 2. 目标用户
 
-> **A Self-Updating, AI-Native Scientific Evidence Graph for Sleep & Health**
+### 2.1 用户画像
 
----
-
-## 一、系统定义
-
-> 将全球睡眠相关的科学研究结构化为"可计算的证据图谱（Evidence Graph）"，让任何人或 AI 在 30 秒内获取可信结论，而不是营销内容。
-
-### 核心转变
-
-| 旧互联网内容 | EvidenceHub v2 |
-|---|---|
-| 博客文章 | Claim Graph（结构化结论） |
-| SEO 文章 | Evidence Graph（可计算证据） |
-| 信息 | 可计算证据 + 自动更新 |
-| 内容网站 | 自更新知识图谱 + 变现层 |
-| 阅读 | AI 可调用 API + SaaS |
-
-### Vision
-
-> 成为 Sleep 领域的 PubMed + Wikipedia + ChatGPT Knowledge Layer + API 标准
-
-长期目标：**Sleep Knowledge Infrastructure Layer**
-
----
-
-## 二、系统总架构（v2 商业级，5 层结构）
-
-```
-                 ┌────────────────────┐
-                 │  Data Sources      │
-                 │ PubMed / RSS / AI  │
-                 └────────┬───────────┘
-                          ↓
-            ┌──────────────────────────┐
-            │   Ingestion Layer        │
-            │ (Paper Collector)        │
-            └────────┬─────────────────┘
-                     ↓
-        ┌──────────────────────────────┐
-        │   AI Evidence Engine         │
-        │  - Claim extraction          │
-        │  - Evidence scoring          │
-        │  - Deduplication             │
-        │  - Structuring               │
-        └────────┬─────────────────────┘
-                     ↓
-        ┌──────────────────────────────┐
-        │   Knowledge Graph Layer      │
-        │ Claims ↔ Studies ↔ Topics    │
-        └────────┬─────────────────────┘
-                     ↓
- ┌────────────────────────────────────────────┐
- │  Product Layer                            │
- │  - Web (Next.js)                         │
- │  - API (REST + future GraphQL/MCP)       │
- │  - SEO/GEO pages                         │
- │  - Affiliate system                      │
- └────────┬───────────────────────────────────┘
-          ↓
- ┌────────────────────────────────────────────┐
- │ Monetization Layer                        │
- │ Affiliate + Subscription + API + Data     │
- └────────────────────────────────────────────┘
-```
-
----
-
-## 三、v1 → v2 核心升级点
-
-| 模块 | v1 (MVP) | v2（商业级） | 状态 |
+| 画像 | 描述 | 核心需求 | 典型场景 |
 |---|---|---|---|
-| 内容 | 文章 | Claim Graph | ✅ 已实现 |
-| 更新 | 手动 | AI 自更新 + 冲突检测 | 🔲 v1 Pipeline 已实现 |
-| 数据 | 简单表 | Knowledge Graph | ✅ 已实现 |
-| SEO | 页面优化 | GEO + AI 引用优化 | ✅ 已实现 |
-| 变现 | Affiliate 占位 | Affiliate + API + SaaS | 🔲 API ✅ / SaaS 路线图 |
-| 架构 | 单站点 | 多层系统 | ✅ 已实现 |
-| Evidence Score | 手动评分 | 公式化自动评分 | 🔲 v1 Scorer 已实现 |
-| 数据源 | 手动录入 | PubMed API 自动采集 | ✅ Fetcher 已验证（227 篇入库） |
-| 数据库 | SQLite (MVP) | Supabase PostgreSQL (生产) | ✅ 已上线 |
+| **健康搜索者** | 有睡眠问题，在网上搜索补充剂信息的普通用户 | 快速了解"某成分有没有用、怎么吃、安全吗" | Google 搜 "magnesium sleep" → 进入 Topic 页 → 查看 Evidence Score + Dose |
+| **Biohacker / 健身爱好者** | 关注睡眠优化、HRV、补剂搭配的高阶用户 | 对比多个成分的证据强度，找到最优组合 | 浏览 Claims Explorer → 按证据强度排序 → 对比 Glycine vs Magnesium |
+| **处方药替代者** | 正在使用安眠药，寻找天然平替方案的用户 | 了解处方药与天然补充剂的科学对比 | 进入 /alternatives/ambien → 查看并排对比表 → 跳转到成分证据页 |
+| **专业用户** | 医生、营养师、睡眠教练、健身教练 | 快速获取某成分的人类 RCT 数量、推荐剂量、适用人群 | 搜索特定成分 → 查看 Study Evidence 卡片 → 引用 PubMed 原文 |
+| **AI 系统** | ChatGPT、Claude、Gemini、Perplexity、AI Agents | 通过 API 获取结构化、可溯源的睡眠科学数据 | 调用 /api/claim/[slug] → 返回 JSON 含 score、rcts、dose、population |
+| **开发者 / 健康应用** | 构建健康类 App 的开发者，需要权威数据源 | 免费、结构化、可信赖的睡眠证据 API | 集成 /api/evidence/[topic] → 嵌入自家产品 |
+
+### 2.2 核心使用场景
+
+**场景 1：搜索者验证成分有效性**
+> 用户在 Google 搜索 "does glycine help you sleep"，点击进入 EvidenceHub 的 Claim 页面，看到 "Glycine reduces sleep latency" 置信度 91/100，3 项人类 RCT 支持，推荐剂量 3g，适用健康成人。用户据此决定是否尝试。
+
+**场景 2：AI 搜索引擎引用**
+> 用户问 Perplexity "What's the evidence for magnesium for sleep?"，AI 通过 API 调用 /api/evidence/magnesium，获取结构化数据并引用 EvidenceHub 作为来源，回答中附带置信度评分和 RCT 数量。
+
+**场景 3：处方药平替研究**
+> 用户正在服用 Ambien，担心依赖性。进入 /alternatives/ambien，看到 Ambien 与 Apigenin + Magnesium + L-Theanine 的并排对比表（依赖性、半衰期、副作用），点击天然成分跳转到对应的证据页面查看科学依据。
+
+**场景 4：按症状筛选成分**
+> 用户不知道该选什么，进入 /decision，选择"入睡困难"，系统展示 Apigenin、L-Theanine、Magnesium Glycinate、Tart Cherry 四个有证据支持的成分，点击进入详情页。
+
+**场景 5：专业用户查证**
+> 营养师需要向客户解释"为什么推荐甘氨酸"，打开 Claim 页面，引用 Study Evidence 卡片中的 RCT 数据（参与者人数、干预剂量、效应量、结果），附 PubMed 链接。
 
 ---
 
-## 四、核心资产：Claim Graph（升级版）
+## 3. 功能需求
 
-### Claim 结构（v2）
+### 3.1 功能全景
 
-```json
-{
-  "claim_id": "glycine_sleep_latency",
-  "text": "Glycine improves sleep latency",
-  "topic": "Sleep",
-  "subtopic": "Amino acids",
-
-  "confidence_score": 91,
-
-  "evidence": {
-    "rcts": 8,
-    "meta_analysis": 2,
-    "cohort": 1,
-    "animal": 3
-  },
-
-  "dose_range": {
-    "optimal": "3g",
-    "range": "2-5g"
-  },
-
-  "population": [
-    "healthy adults",
-    "older adults"
-  ],
-
-  "effect_size": {
-    "sleep_latency_reduction": "10-20%"
-  },
-
-  "contradictions": [
-    "Study X shows no effect in insomniacs"
-  ],
-
-  "last_updated": "2026-07-04"
-}
+```
+EvidenceHub Sleep
+├── 证据浏览层（面向人类用户）
+│   ├── 首页 / Evidence Explorer
+│   ├── Claim 详情页（11 模块）
+│   ├── Article 阅读页
+│   ├── Claims 列表页
+│   ├── Topics 主题页
+│   ├── Studies 研究列表页
+│   ├── Evidence Graph 可视化
+│   └── 搜索
+├── 决策辅助层
+│   ├── Natural Alternatives 目录
+│   ├── 处方药平替详情页
+│   └── 症状决策流
+├── API 层（面向 AI / 开发者）
+│   ├── Claim API
+│   ├── Evidence API
+│   ├── Search API
+│   ├── Explore API
+│   ├── Graph API
+│   └── API 文档页
+└── 基础设施层
+    ├── RSS Feed
+    ├── Sitemap
+    ├── 结构化数据 (JSON-LD)
+    └── Newsletter 订阅
 ```
 
-### 当前数据规模
+### 3.2 功能模块详细需求
 
-> 以下数字从 Supabase 生产数据库实时读取（`getHomeStats()`），首页 stats 可点击跳转。
+#### F1: 首页 / Evidence Explorer
 
-| 指标 | 数量 | 来源 |
+**目标**：让用户一进入网站就能感受到"这是一个证据数据库，不是博客"。
+
+| 需求 ID | 描述 | 优先级 |
 |---|---|---|
-| Claims | 246 | Supabase `claims` 表 |
-| Studies | 227 | Supabase `studies` 表（PubMed 自动采集） |
-| Topics | 8 | Supabase `topics` 表 |
-| Evidence Links | 31 | seed-data（待 pipeline 补充） |
-| Dose Mappings | 30 | seed-data |
-| Population Fits | 48 | seed-data |
-| PubMed 引用 | 227 | PubMed E-utilities API |
+| F1.1 | Hero 区展示实时统计数据（Claims 数、Studies 数、Topics 数、Human RCTs 数），每个数字可点击跳转 | P0 |
+| F1.2 | 展示代表性 Claim 快捷入口（如 "Does melatonin shorten sleep latency?"），引导用户直接进入核心内容 | P0 |
+| F1.3 | "Trending Evidence" 板块：展示高置信度 Claim 卡片 | P0 |
+| F1.4 | "Fresh Evidence" 板块：展示最近添加的高分 Claim | P1 |
+| F1.5 | Evidence Explorer 筛选器：支持按 Topic、Category、Study Type 筛选，按证据强度/最新/更新时间排序，支持关键词搜索 | P0 |
+| F1.6 | 分页：每页 12 条，支持上一页/下一页导航 | P0 |
+| F1.7 | "Featured Deep Dive" 区块：推荐一篇深度文章 | P1 |
+| F1.8 | "Browse Topics" 板块：展示所有主题入口及 Claim 数量 | P0 |
+| F1.9 | "Newest Studies" 板块：展示最新 PubMed 论文，可点击跳转 PubMed | P1 |
+| F1.10 | Natural Alternatives 引导区块：引导用户进入处方药平替目录 | P1 |
 
-### 已覆盖主题
+#### F2: Claim 详情页（核心页面）
 
-Glycine（2 claims）, Magnesium（2 claims）, Melatonin（2 claims）, Tart Cherry, L-Theanine, Ashwagandha, Apigenin, Exercise
+**目标**：用户在任何 Claim 页面都能在 30 秒内获得完整的科学判断依据。
 
----
-
-## 五、商业级数据库设计
-
-### 数据库
-
-- ORM: Prisma ✅（Schema 定义 + SQLite 本地开发）
-- MVP: SQLite ✅
-- Production: **Supabase PostgreSQL** ✅ 已上线
-
-#### 双数据源架构
-
-系统采用 **双数据源设计**，通过 `isDbMode()` 自动切换：
-
-| 模式 | 条件 | 数据源 | 用途 |
+| 需求 ID | 模块 | 描述 | 优先级 |
 |---|---|---|---|
-| DB 模式 | `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` 均已配置 | Supabase PostgreSQL | 生产环境 |
-| 静态模式 | 环境变量缺失 | `src/data/seed-data.ts`（静态 TypeScript） | 开发/回退 |
+| F2.1 | Claim Summary | 一句话结论 + 摘要 + 分类标签 + 最后更新时间 + RCT/Meta 数量 | P0 |
+| F2.2 | Evidence Score | 4 维度星级评分（人类 RCT、Meta-analysis、机制、安全性）+ 综合 Confidence 等级（high/moderate/low） | P0 |
+| F2.3 | Study Evidence | 结构化研究卡片列表，每张卡片含：标题、作者、期刊、年份、参与者人数、时长、干预方式、结局指标、效应量、结果描述、PubMed/DOI 链接 | P0 |
+| F2.4 | Dose Response | 剂量-效应表，标注 OPTIMAL 推荐剂量 | P0 |
+| F2.5 | Mechanism Graph | 箭头流程图展示作用机制链（如：甘氨酸 → NMDA 受体抑制 → 核心体温下降 → 睡眠潜伏期缩短） | P1 |
+| F2.6 | Population Fit | 适用人群表（✅ 适用 / ⚠️ 需注意 / ❌ 不适用），含备注 | P0 |
+| F2.7 | Limitations | 研究局限性列表（强制存在，不可省略） | P0 |
+| F2.8 | FAQ | 可展开的常见问题，AI 搜索引擎友好 | P1 |
+| F2.9 | Related Claims | 关联 Claim 卡片，引导用户继续探索 | P1 |
+| F2.10 | Products | Affiliate 产品位（仅展示研究中使用过的剂量和剂型，非软文） | P2 |
+| F2.11 | References | 参考文献列表，含 PubMed PMID + DOI 可点击链接 | P0 |
+| F2.12 | Article 链接 | 提供 "Read as article" 入口，跳转到可读性更强的文章版 | P1 |
+| F2.13 | 免责声明 | 每页底部固定显示"非医疗建议"声明 | P0 |
 
-DB 模式下所有页面（首页、/claims、/topics、/studies）和 API 均从 Supabase 实时读取，首页 stats 数字反映数据库真实计数。
+#### F3: Article 阅读页
 
-#### 已验证的 Pipeline 运行
+**目标**：为偏好阅读文章的用户提供 Claim 的可读性版本。
 
-```
-curl https://sleep.p1web.site/api/cron/fetch-papers
-→ {"papersFetched":227,"papersStored":227,"errors":[],"supabaseConfigured":true}
-```
-
-227 篇 PubMed 论文全部成功写入 Supabase `studies` 表，0 错误。
-
-### Tables
-
-#### 1. claims（核心）✅
-
-| 字段 | 类型 | 说明 |
+| 需求 ID | 描述 | 优先级 |
 |---|---|---|
-| id | string (PK) | 唯一标识 |
-| slug | string | URL slug |
-| text | text | Claim 文本 |
-| summary | text | 摘要 |
-| category | string | 分类 |
-| topicId | string (FK) | 关联 Topic |
-| evidenceScore | int | 证据评分 (0-100) |
-| humanRctScore | int | 人类 RCT 评分 (0-5) |
-| metaScore | int | Meta-analysis 评分 (0-5) |
-| mechanismScore | int | 机制评分 (0-5) |
-| safetyScore | int | 安全性评分 (0-5) |
-| confidence | enum | high/moderate/low |
-| rctCount | int | RCT 数量 |
-| metaCount | int | Meta-analysis 数量 |
-| studyCount | int | 研究总数 |
-| dose | string | 推荐剂量 |
-| population | JSON | 适用人群数组 |
-| limitations | JSON | 局限性数组 |
-| mechanism | JSON | 机制步骤数组 |
-| faq | JSON | FAQ 数组 |
-| relatedSlugs | JSON | 相关 Claim slugs |
-| keywords | JSON | SEO 关键词 |
-| contradictions | JSON | 矛盾证据（v2 新增） |
-| effectSize | JSON | 效应量结构化（v2 新增） |
-| lastUpdated | timestamp | 最后更新时间 |
-| createdAt | timestamp | 创建时间 |
+| F3.1 | 将 Claim 数据渲染为长文章格式，适合人类阅读 | P1 |
+| F3.2 | 保留所有证据引用和 PubMed 链接 | P0 |
+| F3.3 | 输出 Article JSON-LD 结构化数据 | P1 |
 
-#### 2. studies ✅
+#### F4: Claims 列表页
 
-| 字段 | 类型 | 说明 |
+| 需求 ID | 描述 | 优先级 |
 |---|---|---|
-| id | string (PK) | 唯一标识 |
-| pmid | string | PubMed ID |
-| doi | string | DOI |
-| title | string | 研究标题 |
-| abstract | text | 摘要（v2 新增，AI 提取用） |
-| journal | string | 期刊 |
-| authors | string | 作者 |
-| year | int | 发表年份 |
-| sampleSize | int | 样本量 |
-| duration | string | 研究时长 |
-| intervention | string | 干预方式 |
-| outcome | string | 研究结局 |
-| effectSize | string | 效应量 |
-| result | text | 结果描述 |
-| studyType | enum | rct/meta/observational/animal |
-| population | string | 研究人群 |
-| url | string | PubMed 链接 |
+| F4.1 | 按分类（Hormones、Amino Acids、Lifestyle 等）分组展示所有 Claims | P0 |
+| F4.2 | 每条 Claim 显示置信度评分、RCT 数、Meta 数、剂量 | P0 |
+| F4.3 | 支持排序（证据强度、最新、更新时间） | P1 |
 
-#### 3. claim_study_map（关键关系，v2 升级）✅
+#### F5: Topics 主题页
 
-| 字段 | 类型 | 说明 |
+| 需求 ID | 描述 | 优先级 |
 |---|---|---|
-| id | string (PK) | 唯一标识 |
-| claimId | string (FK) | 关联 Claim |
-| studyId | string (FK) | 关联 Study |
-| strength | enum | strong/moderate/weak |
-| effectDirection | enum | positive/negative/neutral（v2 新增） |
+| F5.1 | Topics 列表页：展示所有主题及 Claim 数量 | P0 |
+| F5.2 | Topic 详情页：展示主题描述 + 该主题下所有 Claims | P0 |
+| F5.3 | 支持主题层级（父主题 / 子主题） | P2 |
 
-#### 4. topics ✅
+#### F6: Studies 研究列表页
 
-| 字段 | 类型 | 说明 |
+| 需求 ID | 描述 | 优先级 |
 |---|---|---|
-| id | string (PK) | 唯一标识 |
-| slug | string | URL slug |
-| name | string | 主题名 |
-| description | text | 描述 |
-| icon | string | 图标标识 |
-| claimCount | int | Claim 数量 |
-| parentTopic | string | 父主题（v2 新增，支持层级） |
+| F6.1 | 展示所有 PubMed 采集的研究论文 | P0 |
+| F6.2 | 支持 studyType 筛选（rct / meta / observational / animal） | P0 |
+| F6.3 | 每条研究显示标题、期刊、年份、研究类型 | P0 |
+| F6.4 | 可点击跳转 PubMed 原文 | P0 |
 
-#### 5. evidence_metrics（核心升级）🔲 路线图
+#### F7: Evidence Graph 可视化
 
-| 字段 | 类型 | 说明 |
+**目标**：让用户直观看到 Claim、Topic、Study 之间的关联关系。
+
+| 需求 ID | 描述 | 优先级 |
 |---|---|---|
-| claimId | string (FK) | 关联 Claim |
-| rctCount | int | RCT 数量 |
-| metaCount | int | Meta-analysis 数量 |
-| humanEvidenceScore | int | 人类证据评分 |
-| consistencyScore | int | 一致性评分 |
-| effectSizeScore | int | 效应量评分 |
-| finalScore | int | 综合评分 |
+| F7.1 | 交互式力导向图，节点 = Claims / Topics / Studies，边 = 证据关系 | P1 |
+| F7.2 | 支持输入实体名称（如 glycine、sleep）作为图中心 | P0 |
+| F7.3 | 支持快速切换主题（sleep, nutrition, heart, longevity, sports, mental, metabolic） | P1 |
+| F7.4 | 支持调整探索深度（1-3 层） | P1 |
 
-#### 6. dose_mappings ✅
+#### F8: Natural Alternatives 目录
 
-| 字段 | 类型 | 说明 |
+**目标**：覆盖 "[drug] + natural alternative" 高意图搜索词，提供处方药与天然补充剂的科学对比。
+
+| 需求 ID | 描述 | 优先级 |
 |---|---|---|
-| id | string (PK) | 唯一标识 |
-| claimId | string (FK) | 关联 Claim |
-| compound | string | 化合物 |
-| doseRange | string | 剂量范围 |
-| effect | string | 效应描述 |
-| optimal | boolean | 是否最优剂量 |
+| F8.1 | 索引页 /alternatives：展示所有处方药平替入口 | P0 |
+| F8.2 | 详情页 /alternatives/[slug]：药品事实卡（用途、机制、起效时间、半衰期、风险/副作用） | P0 |
+| F8.3 | 并排对比表：处方药 vs 天然成分栈（依赖性、次日残留、反弹失眠、长期安全性等维度） | P0 |
+| F8.4 | 天然成分卡：链接到对应 Topic/Claim 证据页 | P0 |
+| F8.5 | FAQ 区（FAQPage JSON-LD） | P1 |
+| F8.6 | 覆盖目标药品：Ambien, Xanax, Melatonin Alternatives, Benzodiazepines, Lunesta, Huberman Cocktail | P0 |
+| F8.7 | 医生免责声明 | P0 |
 
-#### 7. population_fits ✅
+#### F9: 症状决策流
 
-| 字段 | 类型 | 说明 |
+**目标**：不知道选什么的用户，通过症状自测快速找到有证据支持的成分。
+
+| 需求 ID | 描述 | 优先级 |
 |---|---|---|
-| id | string (PK) | 唯一标识 |
-| claimId | string (FK) | 关联 Claim |
-| group | string | 人群组 |
-| fit | enum | yes/check/no |
-| note | string | 备注 |
+| F9.1 | 提供三种失眠类型选择：入睡困难（Sleep Onset）、夜醒/早醒（Sleep Maintenance）、压力型失眠（Anxiety-induced） | P0 |
+| F9.2 | 选择后展示对应有证据支持的成分列表 | P0 |
+| F9.3 | 每个成分可点击跳转到证据详情页 | P0 |
+| F9.4 | 纯客户端交互，点击即渲染，无需刷新 | P1 |
 
----
+#### F10: 搜索
 
-## 六、AI Evidence Engine（v2 灵魂）
-
-### 架构
-
-```
-论文摘要 → [Step 1: Claim 提取] → [Step 2: 去重] → [Step 3: 评分] → [Step 4: 更新]
-```
-
-### Step 1：论文 → Claim 提取
-
-AI Prompt 从论文摘要提取结构化数据：
-
-```
-Extract structured scientific claims.
-
-Return:
-- claim (结论陈述)
-- intervention (干预方式)
-- outcome (结局指标)
-- population (研究人群)
-- effect size (效应量)
-- confidence (置信度)
-- dose (剂量)
-- mechanism (机制链)
-- limitations (局限性)
-- contradictions (矛盾证据)
-```
-
-**实现状态：** ✅ v1 已实现（`src/pipeline/ai-extractor.ts`）
-
-### Step 2：Claim 去重（Graph Merge）
-
-```python
-if similarity(claim_new, claim_existing) > 0.85:
-    merge_claims()  # 合并到已有 Claim，更新证据
-else:
-    create_new_claim()  # 创建新 Claim
-```
-
-**实现状态：** ✅ v1 已实现（基于关键词重叠 + 文本相似度的去重逻辑）
-
-### Step 3：Evidence Scoring（升级版公式）
-
-```text
-Score =
-  RCT_count × 10
-+ Meta_count × 15
-+ Human_studies × 8
-+ Consistency × 20
-+ Effect_size × 20
-- Contradictions × 15
-
-Clamp to [0, 100]
-```
-
-| 分数范围 | Confidence |
-|---|---|
-| 85-100 | high |
-| 65-84 | moderate |
-| 0-64 | low |
-
-**实现状态：** ✅ v1 已实现（`src/pipeline/evidence-scorer.ts`）
-
-### Step 4：自动更新旧 Claim
-
-不是仅新增内容，而是持续优化已有 Claim：
-
-- 新论文 → 匹配已有 Claim → 更新 evidence counts → 重算 score → 更新页面
-- 矛盾证据 → 添加到 contradictions → 降低 score → 更新 confidence
-
-**实现状态：** ✅ v1 已实现（`src/pipeline/pipeline.ts`）
-
----
-
-## 七、自动更新系统（增长引擎）
-
-### 每日 Pipeline
-
-```
-1. Fetch new papers (PubMed API)
-2. Extract claims (AI)
-3. Match existing graph (dedup)
-4. Update scores (evidence scorer)
-5. Regenerate seed data
-6. Ready for build + deploy
-```
-
-### Cron 配置
-
-```bash
-0 3 * * * npm run pipeline:daily
-```
-
-### GitHub Actions 定时任务监控
-
-所有定时任务通过 GitHub Actions 调度运行：
-
-🔗 **[查看运行记录 → https://github.com/redfather918/EvidenceHub-Sleep/actions](https://github.com/redfather918/EvidenceHub-Sleep/actions)**
-
-| 工作流 | 触发时间（北京时间） | 状态 |
+| 需求 ID | 描述 | 优先级 |
 |---|---|---|
-| [Job 1] Fetch Papers | 每天 02:00 | ✅ 已验证（227/227 成功入库） |
-| [Job 2] AI Parse | 每小时 :00 | 🔲 待 AI API Key 配置 |
-| [Job 3] Update Claims | 每小时 :15 | 🔲 待 AI API Key 配置 |
-| [Job 4] Revalidate | 每小时 :30 | ✅ 已配置 |
-| [Job 5] SEO Update | 每天 03:00 | ✅ 已配置 |
-| [Job 6] Affiliate | 每周一 09:00 | ✅ 已配置 |
-| [Job 7] Newsletter | 每周五 18:00 | ✅ 已配置 |
+| F10.1 | 关键词搜索 Claims（支持成分名、Claim 文本、关键词） | P0 |
+| F10.2 | 搜索结果展示置信度评分、剂量、RCT 数 | P0 |
+| F10.3 | 支持 limit 参数控制返回数量 | P1 |
 
-> 每次运行都有详细日志，绿色 ✅ = 成功，红色 ❌ = 失败。
+#### F11: API（面向 AI / 开发者）
 
-### Pipeline v1 架构
+**目标**：让 AI 系统和开发者能直接获取结构化数据，而非爬网页。
 
-```
-src/pipeline/
-├── config.ts           # 配置（API keys, search terms, thresholds）
-├── pubmed-fetcher.ts   # PubMed E-utilities API 采集器
-├── ai-extractor.ts     # AI Claim 提取 + 去重
-├── evidence-scorer.ts  # v2 评分算法
-├── pipeline.ts         # 主流水线编排
-└── types.ts            # Pipeline 专用类型
-
-scripts/
-└── run-pipeline.ts     # CLI 入口
-```
-
-### 输出规模目标
-
-| 时间 | 页面数 | 状态 |
-|---|---|---|
-| Day 1 | 30 pages | ✅ 已达成（11 seed claims + 227 PubMed studies） |
-| Day 7 | 100-300 pages | 🔄 进行中（227 studies 已入库，待 AI 提取 claims） |
-| Day 30 | 3,000+ pages | 🔲 路线图 |
-
----
-
-## 八、Knowledge Graph（护城河）
-
-网站不是文章集合，而是知识图谱：
-
-```
-Magnesium ─── improves sleep ─── Sleep latency
-     │
-     ├── interacts with glycine
-     ├── affects HRV
-     ├── reduces cortisol
-```
-
-### 图结构
-
-- **Nodes** = Claims / Topics / Studies
-- **Edges** = Evidence relationships（strength, direction）
-
-### 护城河本质
-
-不是文章数量、SEO、域名，而是：
-
-- ✔ Claim Graph（结构化知识系统）
-- ✔ 自动更新机制
-- ✔ Evidence Score 系统
-- ✔ AI 可调用结构化数据
-
----
-
-## 九、产品层（商业化重点）
-
-### Web（Next.js）✅ 已实现
-
-- 首页（实时 stats + 可点击跳转）✅
-- Claim 页面（核心，11 模块）✅
-- Claims 列表页（从 Supabase 读取）✅
-- Studies 列表页（从 Supabase 读取，支持 ?studyType=rct 过滤）✅
-- Topic 页面（SEO 入口，从 Supabase 读取）✅
-- Search（关键词搜索）✅
-- API 文档页面 ✅
-- RSS Feed ✅
-- Natural Alternatives 目录（`/alternatives` + `/alternatives/[slug]`）✅
-- 症状决策流（`/decision`，交互式筛选）✅
-
-### Claim 页面 11 模块 ✅
-
-1. Claim Summary — 一句话结论 ✅
-2. Evidence Score（4 维度星级）✅
-3. Study Evidence（结构化研究卡片）✅
-4. Dose Response（含 OPTIMAL 标记）✅
-5. Mechanism Graph（箭头流程图）✅
-6. Population Fit（✅/⚠️/❌）✅
-7. Limitations（强制存在）✅
-8. FAQ（可展开）✅
-9. Related Claims ✅
-10. Products（Affiliate 占位）✅
-11. References（PubMed + DOI 链接）✅
-
-### API（商业化）✅ MVP 已实现
-
-```http
-GET /api/claim/glycine-sleep-latency
-GET /api/evidence/magnesium
-GET /api/search?q=melatonin&limit=5
-```
-
-返回结构化 JSON，含 `_links` 供 AI 系统 discoverable 调用。
-
-### Affiliate Layer 🔲
-
-自动嵌入 Amazon / iHerb / Supplement brands，规则：仅展示研究上下文中使用过的产品。
-
-### Subscription（未来）🔲
-
-- Weekly Evidence Digest
-- Full database access
-- Advanced dose calculator
-
----
-
-## 九·补、Natural Alternatives 目录 + 症状决策流（OpenAlternative 增长模式落地）
-
-> 借鉴 OpenAlternative「需求策展 + Programmatic SEO + 卖铲子」的商业逻辑，将 EvidenceHub 从「成分科学站」升级为「天然助眠 / 处方药平替超级结构化目录」，先拿 Biohacking 长尾流量，再把健康目录架构产品化。
-
-### 商业动机（对应文章 5 大策略）
-
-| 维度 | 落地形态 |
-|---|---|
-| ① 处方药平替关键词矩阵 | `/alternatives/[slug]` 覆盖 "Ambien natural alternative"、"Xanax supplement alternative"、"melatonin alternatives" 等高意图搜索词 |
-| ② 信息策展 + 降维呈现 | 每种药物含「事实卡 + 自然平替并排对比表 + 天然成分卡（靶点/起效/半衰期/证据等级/剂量）」 |
-| ③ 社区点火 | 每页附 PubMed 可验证搜索链接（不编造 PMID），无软文、无广告混淆，适配 r/supplements、r/biohacking 分享 |
-| ④ 变现 | 平替详情页底部预留 Affiliate / 赞助位（明确标注，不影响证据评级） |
-| ⑤ 产品化飞轮 | 数据层 + 生成器天然可打包为「HealthDir Starter」模板；结构化数据可对外提供 API/Widget |
-
-### 功能 1：Natural Alternatives 目录
-
-- **索引页 `/alternatives`**：6 个处方/热门助眠对象的关键词矩阵着陆页
-  - `ambien`（安眠药 Ambien 的天然平替）
-  - `xanax`（Xanax 天然补充剂平替，抗焦 + 助眠）
-  - `melatonin-alternatives`（避免褪黑素依赖的每日可用平替）
-  - `benzodiazepines`（苯二氮䓬类平替）
-  - `lunesta`（Lunesta 平替）
-  - `huberman-cocktail`（Huberman 睡眠配方拆解）
-- **详情页 `/alternatives/[slug]`**：药品事实（用途/常见剂量/典型副作用/戒断注意）→ 与天然成分栈的**并排对比表**（起效时间、半衰期、作用机制、副作用对比）→ 天然成分卡（链接到 `/topics/[slug]`）→ FAQ（FAQPage JSON-LD）→ 医生免责声明。
-
-### 功能 2：症状决策流 `/decision`
-
-- 交互式筛选：按失眠类型一键筛出对应成分
-  - **入睡困难（Sleep Onset）** → Apigenin、L-Theanine、Magnesium Glycinate、Tart Cherry
-  - **夜醒 / 早醒（Sleep Maintenance）** → Magnesium Glycinate、Glycine、Ashwagandha、Tart Cherry
-  - **压力型失眠（Anxiety-induced）** → L-Theanine、Ashwagandha、Apigenin、Magnesium Glycinate
-- 纯客户端组件（`"use client"`），点击即渲染对应成分卡（链接到 `/supplements` 或 `/topics`）。
-
-### 实现要点
-
-- **零数据库变更**：数据全部来自静态模块 `src/data/alternatives.ts` + 访问层 `src/lib/alternatives.ts`，通过 `isSupabaseConfigured` 同构读取，不影响 Claim Graph 主数据模型。
-- **SEO 就绪**：每平替详情页输出 FAQ JSON-LD + Breadcrumb JSON-LD；`/alternatives` 与所有 `[slug]` 已纳入 `src/app/sitemap.ts` 动态 Sitemap。
-- **接入点**：导航栏新增 Alternatives 入口；首页新增 emerald "Natural Alternatives" 引导区块；sitemap 已扩展。
-- **科学声明保守化**：所有对比均标注「非医疗建议、需咨询医生」，且仅指向可验证的 PubMed 检索链接，不编造具体论文编号。
-- **状态**：✅ 已实现，`next build` 干净通过（54/54 页面），所有新路由生产模式实测 HTTP 200。
-
----
-
-## 十、SEO + GEO 优化 ✅ 已实现
-
-### 每个页面已包含
-
-- FAQ Schema (JSON-LD) ✅
-- Article Schema (JSON-LD) ✅
-- Breadcrumb Schema ✅
-- Website Schema ✅
-- Study citations (MedicalScholarlyArticle) ✅
-- DOI / PubMed links ✅
-- Sitemap（动态，24 URLs）✅
-- Robots.txt ✅
-- OpenGraph + Twitter Card ✅
-
-### GEO 优化策略
-
-每个 Claim 回答 AI 搜索引擎的核心问题：
-
-- Does it work? ✅
-- How strong is evidence? ✅
-- What is dose? ✅
-- Who benefits? ✅
-- Limitations? ✅
-
----
-
-## 十一、变现结构（多层）
-
-| 层级 | 模式 | 时间线 | 状态 |
+| 需求 ID | 端点 | 描述 | 优先级 |
 |---|---|---|---|
-| 1 | Affiliate（Amazon, iHerb, Supplements, Wearables） | 短期现金流 | 占位已实现 |
-| 2 | API（B2B licensing, AI companies, Health apps） | 核心增长 | MVP 已实现 |
-| 3 | Subscription（Evidence dashboard, weekly digest, dose calculator） | 稳定收入 | 路线图 |
-| 4 | Data Asset（Claim Graph, Sleep Evidence Knowledge Base） | 长期 | 积累中 |
+| F11.1 | `GET /api/claim/[slug]` | 返回单条 Claim 结构化 JSON（score, rcts, dose, population, _links） | P0 |
+| F11.2 | `GET /api/evidence/[topic]` | 返回某主题的聚合证据（所有相关 Claims + 研究统计） | P0 |
+| F11.3 | `GET /api/search?q=` | 关键词搜索，返回匹配 Claims 列表 | P0 |
+| F11.4 | `GET /api/explore` | 多维度筛选 Claims（topic, category, studyType, sort, pagination） | P1 |
+| F11.5 | `GET /api/graph/[entity]` | 返回知识图谱的节点和边数据 | P1 |
+| F11.6 | API 文档页 /api-docs | 展示所有端点、示例、MCP 路线图 | P0 |
+| F11.7 | 响应包含 `_links` 字段 | 支持超媒体/HATEOAS，AI 可 discoverable 调用 | P0 |
+| F11.8 | 错误处理 | 404 返回 availableEndpoints，400 返回 example | P0 |
+| F11.9 | MCP Server（路线图） | 支持 get_claim, search_evidence, get_dose, compare | P2 |
 
----
+#### F12: SEO / GEO 基础设施
 
-## 十二、目标用户
-
-### 1. 健康搜索用户
-关键词：insomnia, deep sleep, HRV, magnesium sleep, glycine sleep, melatonin
-
-### 2. AI 用户（增长核心）
-不读文章，直接问：Does glycine improve sleep? What is human evidence? Best dose?
-
-### 3. 专业用户
-医生、营养师、睡眠教练、健身教练
-
-### 4. AI 系统（未来最大用户）
-ChatGPT, Claude, Gemini, Perplexity, AI Agents
-
----
-
-## 十三、测试验证结果（2026-07-04）
-
-### 构建验证
-
-| 检查项 | 结果 |
-|---|---|
-| `npm run build` | ✅ 编译成功，0 错误 |
-| TypeScript strict mode | ✅ 类型检查通过 |
-| 静态页面生成 | ✅ 30/30 页面全部生成 |
-| First Load JS | 87 kB (shared) + 187 B (per page) |
-
-### 页面验证（HTTP 200）
-
-| 页面 | URL | 状态 |
+| 需求 ID | 描述 | 优先级 |
 |---|---|---|
-| 首页 | `/` | ✅ 200 |
-| Claims 列表 | `/claims` | ✅ 200 |
-| Claim 详情 | `/claim/glycine-sleep-latency` | ✅ 200 |
-| Topics 列表 | `/topics` | ✅ 200 |
-| Topic 详情 | `/topics/glycine` | ✅ 200 |
-| 搜索 | `/search?q=glycine` | ✅ 200 |
-| API 文档 | `/api-docs` | ✅ 200 |
-| Sitemap | `/sitemap.xml` | ✅ 200 (24 URLs) |
-| Robots | `/robots.txt` | ✅ 200 |
+| F12.1 | 每个页面输出 JSON-LD 结构化数据（Article, FAQ, Breadcrumb, Website, ItemList） | P0 |
+| F12.2 | 动态 Sitemap（随数据更新自动扩展） | P0 |
+| F12.3 | Robots.txt（允许页面爬取，禁止 /api/） | P0 |
+| F12.4 | RSS Feed | P1 |
+| F12.5 | OpenGraph + Twitter Card | P0 |
+| F12.6 | GEO 优化：每个 Claim 回答 AI 搜索引擎核心问题（Does it work? How strong? Dose? Who? Limitations?） | P0 |
 
-### API 验证
+#### F13: 数据自更新（产品能力）
 
-| 端点 | 测试 | 结果 |
+**目标**：数据库不是静态的，而是随新论文发表自动增长和更新。
+
+| 需求 ID | 描述 | 优先级 |
 |---|---|---|
-| Claim API | `GET /api/claim/glycine-sleep-latency` | ✅ 返回结构化 JSON + _links |
-| Evidence API | `GET /api/evidence/magnesium` | ✅ 返回主题级证据汇总 |
-| Search API | `GET /api/search?q=melatonin&limit=3` | ✅ 返回 3 条匹配结果 |
-| 404 处理 | `GET /api/claim/invalid-slug` | ✅ 返回 error + availableEndpoints |
-| 400 处理 | `GET /api/search` (无参数) | ✅ 返回 error + example |
-
-### SEO 验证
-
-| 检查项 | 结果 |
-|---|---|
-| JSON-LD (Article Schema) | ✅ |
-| JSON-LD (FAQ Schema) | ✅ |
-| JSON-LD (Breadcrumb Schema) | ✅ |
-| JSON-LD (Website Schema) | ✅ |
-| Sitemap URLs | ✅ 24 条 (5 静态 + 11 claims + 8 topics) |
-| Robots.txt | ✅ 允许页面爬取，禁止 /api/ |
-
-### Claim 页面 11 模块验证
-
-| 模块 | 状态 |
-|---|---|
-| 1. Claim Summary | ✅ |
-| 2. Evidence Score (4 维度星级) | ✅ |
-| 3. Study Evidence (结构化研究卡片) | ✅ |
-| 4. Dose Response (OPTIMAL 标记) | ✅ |
-| 5. Mechanism Graph (箭头流程图) | ✅ |
-| 6. Population Fit (✅/⚠️/❌) | ✅ |
-| 7. Limitations (强制存在) | ✅ |
-| 8. FAQ (可展开) | ✅ |
-| 9. Related Claims | ✅ |
-| 10. Products (Affiliate 占位) | ✅ |
-| 11. References (PubMed + DOI 链接) | ✅ |
+| F13.1 | 自动从 PubMed 采集新论文 | P0 |
+| F13.2 | AI 从论文摘要提取结构化 Claim | P0 |
+| F13.3 | 新论文匹配已有 Claim 时更新证据计数和评分（而非创建重复 Claim） | P0 |
+| F13.4 | 矛盾证据被识别时降低评分并更新 Confidence 等级 | P1 |
+| F13.5 | 首页统计数据实时反映数据库真实计数 | P0 |
 
 ---
 
-## 十四、实现状态总结
+## 4. 证据评分体系
 
-### 已完成（MVP + Pipeline v1 + Supabase 生产接入）
+### 4.1 评分维度
 
-- [x] Next.js 14 项目搭建 (App Router + TypeScript + Tailwind)
-- [x] Prisma Schema 设计 (6 个模型)
-- [x] 数据访问层 (lib/data.ts 静态 + lib/db.ts Supabase 双模式)
-- [x] 11 个 seed Claims（含完整证据图谱）
-- [x] 227 个 Studies（PubMed 自动采集，已入库 Supabase）
-- [x] 8 个 Topics
-- [x] Claim 详情页（11 个模块）
-- [x] Studies 列表页（支持 studyType 过滤）
+每条 Claim 基于四个维度评分：
+
+| 维度 | 说明 | 数据来源 |
+|---|---|---|
+| Human RCT Score | 人类随机对照试验的数量和质量 | PubMed 采集的 RCT 论文 |
+| Meta-analysis Score | Meta-analysis / 系统综述的数量 | PubMed 采集的 Meta 论文 |
+| Mechanism Score | 作用机制的科学合理性 | AI 从论文摘要提取 |
+| Safety Score | 安全性数据（副作用、长期使用） | AI 从论文摘要提取 |
+
+### 4.2 Confidence 等级
+
+| 分数范围 | 等级 | 含义 |
+|---|---|---|
+| 85-100 | High | 多项人类 RCT + Meta-analysis 支持，机制明确，安全性良好 |
+| 65-84 | Moderate | 有一定人类证据但数量或质量不足，或存在矛盾 |
+| 0-64 | Low | 证据有限，主要依赖动物实验或观察性研究 |
+
+### 4.3 用户呈现
+
+- 首页/列表页：以数字 + 颜色标签展示综合评分
+- Claim 详情页：以 4 维度星级 + 综合 Confidence 等级展示
+- API 响应：返回 `evidenceScore` (int) + `confidenceLevel` (enum)
+
+---
+
+## 5. 内容覆盖范围
+
+### 5.1 当前数据规模
+
+| 指标 | 数量 | 说明 |
+|---|---|---|
+| Claims | 846+ | 结构化证据声明 |
+| Studies | 227+ | PubMed 自动采集的研究论文 |
+| Topics | 8 | Sleep, Nutrition, Heart, Longevity, Sports, Mental, Metabolic 等 |
+| Natural Alternatives | 6 | Ambien, Xanax, Melatonin Alternatives, Benzodiazepines, Lunesta, Huberman Cocktail |
+
+### 5.2 内容增长目标
+
+| 里程碑 | Claims 数 | Studies 数 | 页面数 | 时间线 |
+|---|---|---|---|---|
+| MVP | 11 | 227 | 30 | ✅ 已达成 |
+| Phase 1 | 846+ | 500+ | 100+ | ✅ 已达成 |
+| Phase 2 | 2,000+ | 1,500+ | 500+ | Q3 2026 |
+| Phase 3 | 5,000+ | 5,000+ | 3,000+ | Q4 2026 |
+
+### 5.3 内容覆盖领域（扩展方向）
+
+- **当前**：睡眠补充剂（Glycine, Magnesium, Melatonin, L-Theanine, Ashwagandha, Apigenin, Tart Cherry 等）
+- **近期**：运动与睡眠、光照疗法、CBT-I 行为干预
+- **中期**：睡眠与心脏健康、睡眠与代谢、睡眠与长寿
+- **长期**：全健康领域的证据图谱
+
+---
+
+## 6. 商业模式
+
+### 6.1 变现层级
+
+| 层级 | 模式 | 目标用户 | 时间线 | 状态 |
+|---|---|---|---|---|
+| L1 | Affiliate（Amazon, iHerb, 补剂品牌, 可穿戴设备） | 健康搜索者、Biohacker | 短期现金流 | 占位已就绪 |
+| L2 | API 付费（B2B Licensing, AI 公司, 健康应用） | AI 系统、开发者 | 核心增长 | MVP 免费，路线图付费 |
+| L3 | 订阅（Evidence Dashboard, Weekly Digest, Dose Calculator） | 专业用户、Biohacker | 稳定收入 | 路线图 |
+| L4 | 数据资产（Claim Graph, Sleep Evidence Knowledge Base） | 研究机构、药企 | 长期 | 积累中 |
+
+### 6.2 API 定价规划
+
+| 层级 | 价格 | 配额 | 功能 |
+|---|---|---|---|
+| Free | $0 | 100 requests/day | 全部端点 |
+| Pro | $49/月 | 10,000 requests/day | 全部端点 + 优先更新 |
+| Enterprise | 定制 | Unlimited + MCP | 全部端点 + MCP Server + 私有部署 |
+
+### 6.3 Affiliate 原则
+
+- **仅展示研究中使用过的产品**：不在证据页面放无关产品广告
+- **明确标注**：Affiliate 链接必须标注，不影响证据评级
+- **剂量匹配**：推荐产品的剂型/剂量与研究中使用的一致
+
+---
+
+## 7. 竞品分析
+
+| 维度 | EvidenceHub Sleep | Examine.com | PubMed | WebMD / Healthline |
+|---|---|---|---|---|
+| 数据结构化 | Claim Graph（可计算） | 文章 + 摘要 | 原始论文 | 文章 |
+| 证据评分 | 4 维度 + 公式化 | 编辑评级 | 无 | 无 |
+| AI 可调用 | REST API + MCP 路线图 | 无 | E-utilities API | 无 |
+| 自动更新 | PubMed 自动采集 + AI 提取 | 人工更新 | 原始数据 | 人工更新 |
+| 处方药平替对比 | 有（并排对比表） | 无 | 无 | 无 |
+| 症状决策流 | 有 | 无 | 无 | 无 |
+| 覆盖领域 | 睡眠（扩展中） | 全健康 | 全医学 | 全健康 |
+| 免费访问 | 全免费 + 免费 API | 部分付费 | 免费 | 免费 |
+
+**差异化优势**：
+1. 结构化 Claim Graph——不是文章，是可计算的知识
+2. AI-Ready API——为 AI 搜索引擎时代设计
+3. 处方药平替对比——独占 "[drug] + natural alternative" 搜索意图
+4. 自动更新——数据随 PubMed 新论文自动增长
+
+---
+
+## 8. 成功指标 (KPIs)
+
+### 8.1 增长指标
+
+| 指标 | 当前 | 目标 (Q3 2026) | 目标 (Q4 2026) |
+|---|---|---|---|
+| 月活用户 (MAU) | - | 10,000 | 50,000 |
+| Claims 数 | 846+ | 2,000+ | 5,000+ |
+| Studies 数 | 227+ | 1,500+ | 5,000+ |
+| 页面数 | 100+ | 500+ | 3,000+ |
+| API 调用/月 | - | 100,000 | 1,000,000 |
+
+### 8.2 SEO 指标
+
+| 指标 | 当前 | 目标 (Q3 2026) |
+|---|---|---|
+| Google 索引页面 | 54 | 500+ |
+| 搜索可见性 (GSC impressions) | - | 100,000/月 |
+| AI 搜索引用次数 | - | 1,000/月 |
+
+### 8.3 产品质量指标
+
+| 指标 | 目标 |
+|---|---|
+| 页面加载时间 (LCP) | < 2.5s |
+| API 响应时间 (P95) | < 200ms |
+| 数据更新频率 | 每日自动 |
+| 证据评分准确率 | 人工抽检 90%+ 合理 |
+
+---
+
+## 9. 非功能性需求
+
+| 类别 | 需求 |
+|---|---|
+| 性能 | 首页 LCP < 2.5s；API P95 < 200ms；静态生成 + ISR |
+| 可用性 | 99.9% uptime；双数据源架构（生产 DB 故障时自动降级到静态数据） |
+| SEO | 100% 页面含 JSON-LD；动态 Sitemap；GEO 优化（AI 搜索引擎可引用） |
+| 可访问性 | 语义化 HTML；键盘导航；Alt text |
+| 移动端 | 响应式设计，移动端优先 |
+| 合规 | 免责声明（非医疗建议）；隐私政策；服务条款 |
+| 国际化 | 当前英文优先，架构支持多语言扩展 |
+
+---
+
+## 10. 产品路线图
+
+### Phase 1: MVP ✅ 已完成
+
+- [x] Claim Graph 数据模型 + 11 条种子 Claim
+- [x] Claim 详情页（11 模块）
+- [x] 首页 + Topics + Claims + Studies 列表
+- [x] 搜索功能
 - [x] 3 个 REST API 端点
-- [x] 7 个 Cron API 路由（fetch-papers, ai-parse, update-claims, revalidate, seo-update, affiliate, newsletter）
-- [x] JSON-LD 结构化数据 (Article, FAQ, Breadcrumb, Website)
-- [x] Sitemap + Robots.txt + RSS Feed
-- [x] PubMed 论文采集器（Ingestion Layer v1）
-- [x] AI Claim 提取引擎（Evidence Engine Step 1-2）
-- [x] Evidence Score 计算器（v2 评分公式）
-- [x] Pipeline Runner + CLI（自动更新系统 v1）
-- [x] GitHub Actions 定时任务调度（7 个 Workflow）
-- [x] **Supabase PostgreSQL 生产数据库已上线** ✅
-- [x] Supabase 客户端封装（lib/supabase.ts）
-- [x] Supabase 初始化脚本（supabase/init.sql，8 张表 + 索引）
-- [x] 首页 stats 实时读取 Supabase 计数（getHomeStats）
-- [x] 首页 stats 可点击跳转（Claims→/claims, Studies→/studies, Topics→/topics, RCTs→/studies?studyType=rct）
-- [x] /claims、/topics、/studies 页面从 Supabase 读取真实数据
-- [x] Seed 数据迁移脚本（scripts/seed-to-supabase.ts）
-- [x] Supabase 连接测试脚本（scripts/test-supabase.ts）
-- [x] 腾讯云服务器部署（sleep.p1web.site）
-- [x] Natural Alternatives 目录（`/alternatives` + `/alternatives/[slug]`，6 个处方/热门助眠对象平替页）
-- [x] 症状决策流（`/decision`，入睡困难 / 夜醒早醒 / 压力型失眠 一键筛选）
-- [x] 平替静态数据层（`src/data/alternatives.ts` + `src/lib/alternatives.ts`，零 DB schema 变更）
-- [x] 平替详情页 FAQ + Breadcrumb JSON-LD，并纳入动态 Sitemap
-- [x] 导航栏 + 首页 "Natural Alternatives" 引导区块接入
+- [x] PubMed 自动采集 Pipeline
+- [x] JSON-LD 结构化数据 + Sitemap
+- [x] Supabase 生产数据库上线
 
-### 路线图
+### Phase 2: 增长 ✅ 已完成
 
-- [x] PubMed 论文采集器（Ingestion Layer v1）✅ 已验证
-- [x] AI Claim 提取引擎（Evidence Engine Step 1-2）✅ 框架就绪
-- [x] Evidence Score 计算器（v2 评分公式）✅ v1
-- [x] Pipeline Runner + CLI（自动更新系统 v1）✅
-- [x] **Supabase 生产数据库接入** ✅ 已上线
-- [ ] **AI API 接入（DeepSeek/OpenAI）实现真实 Claim 提取** ← 当前重点
-- [ ] Pipeline 全链路验证（fetch → AI parse → update claims → revalidate）
-- [ ] GraphQL API
-- [ ] MCP Server
-- [ ] Podcast 生成（TTS）
+- [x] Evidence Explorer（多维度筛选 + 排序 + 分页）
+- [x] Evidence Graph 可视化
+- [x] Natural Alternatives 目录（6 个处方药平替页）
+- [x] 症状决策流
+- [x] Article 阅读页
+- [x] 846+ Claims（从 11 条增长）
+- [x] Explore API + Graph API
+
+### Phase 3: AI-Native 升级（当前重点）
+
+- [ ] AI Claim 提取全链路验证（fetch → AI parse → update claims → revalidate）
+- [ ] MCP Server 上线（get_claim, search_evidence, get_dose, compare）
+- [ ] API 付费层（Free / Pro / Enterprise）
+- [ ] AI 搜索引擎引用追踪（GSC + AI citation monitoring）
+
+### Phase 4: 商业化
+
+- [ ] Affiliate 链接接入（Amazon, iHerb）
+- [ ] 订阅系统（Evidence Dashboard, Weekly Digest, Dose Calculator）
+- [ ] Podcast 生成（TTS 音频版证据摘要）
 - [ ] Infographic 自动生成
-- [ ] Affiliate 链接接入
-- [ ] Subscription 系统
-- [ ] 社交分发
+
+### Phase 5: 生态扩展
+
+- [ ] 多领域扩展（从 Sleep 扩展到全健康领域）
+- [ ] GraphQL API
+- [ ] 社区贡献（研究者提交 Claim）
+- [ ] "HealthDir Starter" 模板产品化
 
 ---
 
-## 十五、技术栈
+## 11. 风险与缓解
 
-| 层 | 技术选型 | 状态 |
+| 风险 | 影响 | 缓解策略 |
 |---|---|---|
-| Frontend | Next.js 14 (App Router) + TypeScript + Tailwind CSS | ✅ |
-| Database | Prisma ORM (SQLite 本地) + **Supabase PostgreSQL** (生产) | ✅ 已上线 |
-| Data Access | 双数据源：lib/db.ts (Supabase) + lib/data.ts (静态回退) | ✅ |
-| API | Next.js Route Handlers (REST + Cron) | ✅ |
-| SEO | JSON-LD Schema + Sitemap + Robots.txt + RSS | ✅ |
-| Ingestion | PubMed E-utilities API | ✅ 已验证 (227 篇) |
-| AI Pipeline | DeepSeek API / OpenAI (Claim extraction, scoring) | 🔲 框架就绪，待 API Key |
-| Scoring | v2 Evidence Score 公式 | ✅ v1 |
-| Deployment | 腾讯云服务器 (pm2/systemd, sleep.p1web.site) | ✅ 运行中 |
-| Cron | GitHub Actions 定时触发 (7 个 Workflow) | ✅ 已配置 |
-| Monitoring | GitHub Actions 运行日志 | ✅ [查看](https://github.com/redfather918/EvidenceHub-Sleep/actions) |
+| AI 提取的 Claim 不准确 | 误导用户 | 人工抽检 + 保守评分 + 免责声明 |
+| PubMed API 限制或变更 | 数据采集中断 | 缓存机制 + 备用数据源（RSS, CrossRef） |
+| AI 搜索引擎不引用 | API 无人调用 | GEO 优化 + MCP Server + 主动提交到 AI 平台 |
+| 竞品（Examine.com）先发优势 | 流量被截 | 差异化（API + 处方药平替 + 自动更新） |
+| 法律风险（健康信息） | 诉讼风险 | 免责声明 + 不做医疗建议 + 保守表述 + 隐私政策/服务条款 |
 
 ---
 
-## 十六、最终定义
+## 12. 相关文档
 
-> **EvidenceHub Sleep is not a content website.**
-> **It is a self-updating scientific knowledge graph for sleep science.**
+| 文档 | 说明 |
+|---|---|
+| [TRD.md](TRD.md) | 技术需求文档（架构、数据库设计、API 规范、部署方案） |
+| [FEATURE-TRACKER.md](FEATURE-TRACKER.md) | 功能追踪表 |
+| [SEO-PLAYBOOK.md](SEO-PLAYBOOK.md) | SEO 执行手册 |
+| [OPERATION-MANUAL.md](OPERATION-MANUAL.md) | 运营手册 |
+| [SERVER-DEPLOY.md](SERVER-DEPLOY.md) | 服务器部署指南 |
 
 ---
 
-*PRD v4.0 — Updated: 2026-07-31 (新增 Natural Alternatives 目录 + 症状决策流)*
-*Build: 246 claims, 227 studies (PubMed), 8 topics — live from Supabase*
-*Pipeline: PubMed fetcher ✅ verified (227/227) + AI extractor + Evidence scorer + CLI runner (v1)*
-*Database: Supabase PostgreSQL ✅ online (dual-source: Supabase / static fallback)*
-*Cron: 7 GitHub Actions workflows (fetch-papers verified, 6 pending AI key)*
-*Deployment: 腾讯云 (sleep.p1web.site) + GitHub Actions scheduling*
-*Test: All pages 200, 3 APIs verified, 11 modules confirmed, SEO validated*
+## 附录 A: 术语表
+
+| 术语 | 定义 |
+|---|---|
+| Claim | 一条可验证的科学声明，如 "Glycine reduces sleep latency" |
+| Evidence Score | 证据置信度评分（0-100），基于 RCT 数、Meta 数、机制、安全性 |
+| Claim Graph | Claims ↔ Studies ↔ Topics 之间构成的知识图谱 |
+| Confidence Level | 评分等级（high / moderate / low） |
+| Natural Alternatives | 处方安眠药的天然补充剂平替方案 |
+| GEO | Generative Engine Optimization，面向 AI 搜索引擎的优化 |
+| MCP | Model Context Protocol，AI Agent 直接查询数据的协议 |
+| PubMed | 美国国家医学数据库，论文数据来源 |
+| RCT | Randomized Controlled Trial，随机对照试验 |
+
+---
+
+*PRD v5.0 — Updated: 2026-08-04*
+*Live: sleep.p1web.site · 846+ claims · 227+ studies · 8 topics*
